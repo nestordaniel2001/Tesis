@@ -1,0 +1,249 @@
+/* Estilos generales */
+:root {
+    --primary-blue: #0046b5;
+    --secondary-blue: #005bd4;
+    --primary-orange: #ff9966;
+    --secondary-orange: #ff8040;
+    --dark-bg: #000000;
+    --light-bg: #ffffff;
+    --gray-text: #666666;
+    --border-radius: 15px;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Arial', sans-serif;
+}
+
+body {
+    display: flex;
+    min-height: 100vh;
+    background-color: #f5f5f5;
+}
+
+.app-container {
+    display: flex;
+    width: 100%;
+    max-width: 1200px;
+    margin: 20px auto;
+    background-color: var(--light-bg);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Barra lateral */
+.sidebar {
+    width: 200px;
+    background-color: var(--primary-blue);
+    padding: 20px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.logo-container {
+    width: 100px;
+    height: 100px;
+    background-color: var(--dark-bg);
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 30px;
+    overflow: hidden;
+}
+
+.logo {
+    width: 100%;
+    height: 80px;
+}
+
+.main-nav {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    padding: 0 20px;
+}
+
+.nav-button {
+    width: 100%;
+    padding: 12px 0;
+    border-radius: 25px;
+    border: none;
+    background-color: var(--dark-bg);
+    color: var(--light-bg);
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.nav-button:hover {
+    transform: scale(1.05);
+}
+
+.inicio-btn {
+    background-color: var(--primary-orange);
+}
+
+/* Contenido principal */
+.main-content {
+    flex: 1;
+    padding: 20px;
+}
+
+.welcome-card {
+    background-color: var(--light-bg);
+    border-radius: var(--border-radius);
+    border: 2px solid #ddd;
+    padding: 20px;
+}
+
+.welcome-card h1 {
+    text-align: center;
+    margin-bottom: 5px;
+}
+
+.welcome-card p {
+    text-align: center;
+    color: var(--black-text);
+    margin-bottom: 20px;
+}
+
+/* Tarjetas de asistentes */
+.assistants-container {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.assistant-card {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: transform 0.3s ease;
+}
+
+.assistant-card:hover {
+    transform: translateY(-5px);
+}
+
+.visual-assistant {
+    background-color: var(--primary-orange);
+}
+
+.auditory-assistant {
+    background-color: var(--primary-blue);
+    color: white;
+}
+
+.assistant-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-right: 15px;
+}
+
+.assistant-icon img {
+    width: 100%;
+    height: auto;
+}
+
+/* Acceso rápido */
+.quick-access {
+    border-top: 1px solid #ddd;
+    padding-top: 15px;
+}
+
+.quick-access p {
+    font-weight: bold;
+}
+
+.quick-access-subtitle {
+    display: block;
+    font-size: 12px;
+    color: var(--black-text);
+    margin-bottom: 15px;
+}
+
+.quick-access-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.quick-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.visual-icon {
+    background-color: var(--primary-orange);
+}
+
+.auditory-icon {
+    background-color: var(--primary-blue);
+}
+
+.quick-icon img {
+    width: 60%;
+    height: auto;
+}
+
+.action-button {
+    padding: 8px 20px;
+    border-radius: 20px;
+    border: none;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.visual-button {
+    background-color: var(--primary-orange);
+}
+
+.auditory-button {
+    background-color: var(--primary-blue);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .app-container {
+        flex-direction: column;
+    }
+    
+    .sidebar {
+        width: 100%;
+        padding: 10px;
+    }
+    
+    .main-nav {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .nav-button {
+        width: auto;
+        padding: 10px 15px;
+    }
+    
+    .assistants-container {
+        flex-direction: column;
+    }
+}

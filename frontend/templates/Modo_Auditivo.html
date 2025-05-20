@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auris - Asistente Académico Inclusivo</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/auditory_mode.css') }}">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Barra lateral izquierda -->
+        <div class="sidebar">
+            <div class="logo-container">
+                <img src="/static/assets/images/logo.png" alt="Logo de Auris" class="logo">
+            </div>
+            <nav class="main-nav">
+                <button id="btn-inicio" class="nav-button">INICIO</button>
+                <button id="btn-modo-visual" class="nav-button">MODO VISUAL</button>
+                <button id="btn-modo-auditivo" class="nav-button active">MODO AUDITIVO</button>
+                <button id="btn-biblioteca" class="nav-button">BIBLIOTECA</button>
+                <button id="btn-configuracion" class="nav-button">CONFIGURACIÓN</button>
+            </nav>
+        </div>
+
+        <!-- Contenido principal - Modo Auditivo -->
+        <main class="main-content">
+            <div class="auditory-mode-card">
+                <div class="auditory-mode-header">
+                    <h2>Asistente Auditivo</h2>
+                    <p>Transcripción en tiempo real</p>
+                </div>
+                
+                <div class="recording-section">
+                    <div class="recording-controls">
+                        <button class="record-btn active">Grabando</button>
+                        <button class="pause-btn">Pausar</button>
+                        <button class="stop-btn">Detener</button>
+                    </div>
+                    
+                    <div class="audio-source">
+                        <p>Fuente del audio:</p>
+                        <div class="source-selection">
+                            <span class="selected-source">Micrófono interno seleccionado</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="transcription-section">
+                    <h3>Transcripción</h3>
+                    <div class="transcription-content">
+                        <p>Buenos días a todos. Hoy comenzaremos con el tema de la fotosíntesis este proceso es fundamental para entender como las plantas convierten la energía solar</p>
+                    </div>
+                    <div class="audio-visualization">
+                        <div class="waveform">
+                            <!-- Las barras de ondas de audio -->
+                            <div class="wave-bar"></div>
+                            <div class="wave-bar"></div>
+                            <div class="wave-bar"></div>
+                            <div class="wave-bar"></div>
+                            <div class="wave-bar"></div>
+                            <div class="wave-bar"></div>
+                            <div class="wave-bar"></div>
+                            <div class="wave-bar"></div>
+                        </div>
+                    </div>
+                    <div class="save-transcription">
+                        <button class="btn-save">Guardar Transcripción</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/visual_assistant.js') }}"></script>
+</body>
+</html>

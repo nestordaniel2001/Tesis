@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auris - Asistente Académico Inclusivo</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Barra lateral izquierda -->
+        <div class="sidebar">
+            <div class="logo-container">
+                <img src="/static/assets/images/logo.png" alt="Logo de Auris" class="logo">
+            </div>
+            <nav class="main-nav">
+                <button id="btn-inicio" class="nav-button">INICIO</button>
+                <button id="btn-modo-visual" class="nav-button">MODO VISUAL</button>
+                <button id="btn-modo-auditivo" class="nav-button">MODO AUDITIVO</button>
+                <button id="btn-biblioteca" class="nav-button active">BIBLIOTECA</button>
+                <button id="btn-configuracion" class="nav-button">CONFIGURACIÓN</button>
+            </nav>
+        </div>
+
+        <!-- Contenido principal - Biblioteca -->
+        <main class="main-content">
+            <div class="library-card">
+                <div class="library-header">
+                    <h2>Biblioteca</h2>
+                    <p>Tus documentos y transcripciones guardadas</p>
+                </div>
+                
+                <div class="library-search">
+                    <input type="text" placeholder="Buscar en biblioteca..." class="search-input">
+                    <button class="btn-search">Buscar</button>
+                </div>
+                
+                <div class="library-filters">
+                    <button class="filter-btn active">Todos</button>
+                    <button class="filter-btn">Documentos</button>
+                    <button class="filter-btn">Transcripciones</button>
+                    <button class="filter-btn">Favoritos</button>
+                </div>
+                
+                <div class="library-items">
+                    <!-- Elemento Visual -->
+                    <div class="library-item">
+                        <div class="item-icon visual-item">
+                            <img src="/static/assets/images/document_icon.png" alt="Icono de documento">
+                        </div>
+                        <div class="item-info">
+                            <h3>Leyes del movimiento</h3>
+                            <p>15/05/2025 · Documento</p>
+                        </div>
+                        <div class="item-actions">
+                            <button class="btn-item-action">Abrir</button>
+                            <button class="btn-item-action">Eliminar</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Elemento Auditivo -->
+                    <div class="library-item">
+                        <div class="item-icon auditory-item">
+                            <img src="/static/assets/images/audio_icon.png" alt="Icono de audio">
+                        </div>
+                        <div class="item-info">
+                            <h3>Clase de Fotosíntesis</h3>
+                            <p>14/05/2025 · Transcripción</p>
+                        </div>
+                        <div class="item-actions">
+                            <button class="btn-item-action">Abrir</button>
+                            <button class="btn-item-action">Eliminar</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Más elementos de la biblioteca -->
+                    <div class="library-item">
+                        <div class="item-icon visual-item">
+                            <img src="/static/assets/images/document_icon.png" alt="Icono de documento">
+                        </div>
+                        <div class="item-info">
+                            <h3>Historia de América</h3>
+                            <p>10/05/2025 · Documento</p>
+                        </div>
+                        <div class="item-actions">
+                            <button class="btn-item-action">Abrir</button>
+                            <button class="btn-item-action">Eliminar</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="pagination">
+                    <button class="pagination-btn">Anterior</button>
+                    <div class="pagination-numbers">
+                        <span class="page-number active">1</span>
+                        <span class="page-number">2</span>
+                        <span class="page-number">3</span>
+                    </div>
+                    <button class="pagination-btn">Siguiente</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

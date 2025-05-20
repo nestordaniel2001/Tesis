@@ -1,0 +1,200 @@
+/* visual_mode.css - Estilos específicos para el modo visual de Auris
+   Diseñado para ser compatible con main.css */
+
+.visual-mode-card {
+    background-color: var(--light-bg);
+    border-radius: var(--border-radius);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.visual-mode-header {
+    text-align: center;
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.visual-mode-header h2 {
+    margin: 0;
+    font-size: 20px;
+}
+
+.visual-mode-header p {
+    margin: 5px 0 0;
+    font-size: 14px;
+    color: var(--gray-text);
+}
+
+/* Sección de documentos */
+.document-section {
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.document-section h3 {
+    margin-bottom: 15px;
+    font-size: 16px;
+}
+
+.document-buttons {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.left-buttons {
+    flex: 1;
+    margin-right: 10px;
+}
+
+.right-buttons {
+    width: 100px;
+}
+
+.btn-gray {
+    width: 100%;
+    padding: 8px;
+    background-color: #e0e0e0;
+    border: none;
+    border-radius: 5px;
+    text-align: left;
+    font-size: 14px;
+    color: #333;
+}
+
+.btn-orange {
+    width: 100%;
+    padding: 8px;
+    background-color: var(--primary-orange);
+    border: none;
+    border-radius: 5px;
+    color: var(--light-bg);
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.btn-orange:hover {
+    background-color: var(--secondary-orange);
+}
+
+/* Sección de lectura */
+.reading-section {
+    padding: 15px;
+}
+
+.reading-section h3 {
+    margin-bottom: 15px;
+    font-size: 16px;
+}
+
+.reading-content {
+    background-color: #f9f9f9;
+    border-radius: 5px;
+    padding: 15px;
+    margin-bottom: 15px;
+    font-size: 14px;
+}
+
+.reading-content p {
+    margin-bottom: 8px;
+}
+
+/* Controles de reproducción */
+.playback-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.playback-buttons {
+    margin-right: 15px;
+}
+
+.play-btn {
+    width: 40px;
+    height: 40px;
+    background-color: var(--dark-bg);
+    border: none;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+}
+
+.pause-icon {
+    color: var(--light-bg);
+    font-style: normal;
+    font-size: 14px;
+}
+
+.playback-slider {
+    flex: 1;
+    height: 10px;
+    background-color: #eee;
+    border-radius: 5px;
+    position: relative;
+    margin-right: 15px;
+}
+
+.playback-fill {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 40%;
+    background: linear-gradient(to right, var(--dark-bg), var(--primary-orange));
+    border-radius: 5px;
+}
+
+.playback-info {
+    margin-right: 15px;
+    font-size: 14px;
+}
+
+.save-button {
+    width: 120px;
+}
+
+/* Estilo específico para el botón modo visual en la barra lateral */
+#btn-modo-visual.active {
+    background-color: var(--primary-orange);
+    color: var(--light-bg);
+}
+
+/* Media queries para mantener la coherencia con el diseño responsive */
+@media (max-width: 768px) {
+    .visual-mode-card {
+        max-width: 100%;
+    }
+    
+    .document-buttons {
+        flex-direction: column;
+    }
+    
+    .left-buttons {
+        margin-right: 0;
+        margin-bottom: 10px;
+    }
+    
+    .right-buttons {
+        width: 100%;
+    }
+    
+    .playback-controls {
+        flex-wrap: wrap;
+    }
+    
+    .playback-slider {
+        width: 100%;
+        margin: 15px 0;
+    }
+    
+    .save-button {
+        width: 100%;
+        margin-top: 10px;
+    }
+}

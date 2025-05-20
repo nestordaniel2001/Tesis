@@ -1,0 +1,17 @@
+{
+    "app": {
+        "name": "Asistente Inteligente Auris",
+        "version": "1.0.0",
+        "language": "es",
+        "debug": true
+    },
+    "accessibility": {
+        "default_font_size": "medium",
+        "high_contrast_mode": false,
+        "simplified_text": false,
+        "audio_feedback": true,
+        "extended_descriptions": true
+    },
+    "api_keys": {},
+    "users": {}
+}

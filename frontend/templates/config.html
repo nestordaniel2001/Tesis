@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auris - Asistente Académico Inclusivo</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Barra lateral izquierda -->
+        <div class="sidebar">
+            <div class="logo-container">
+                <img src="/static/assets/images/logo.png" alt="Logo de Auris" class="logo">
+            </div>
+            <nav class="main-nav">
+                <button id="btn-inicio" class="nav-button">INICIO</button>
+                <button id="btn-modo-visual" class="nav-button">MODO VISUAL</button>
+                <button id="btn-modo-auditivo" class="nav-button">MODO AUDITIVO</button>
+                <button id="btn-biblioteca" class="nav-button">BIBLIOTECA</button>
+                <button id="btn-configuracion" class="nav-button active">CONFIGURACIÓN</button>
+            </nav>
+        </div>
+
+        <!-- Contenido principal - Configuración -->
+        <main class="main-content">
+            <div class="config-card">
+                <div class="config-header">
+                    <h2>Configuración</h2>
+                    <p>Personaliza tu experiencia en Auris</p>
+                </div>
+                
+                <div class="config-sections">
+                    <!-- Sección de Perfil -->
+                    <div class="config-section">
+                        <h3>Perfil de Usuario</h3>
+                        <div class="profile-settings">
+                            <div class="profile-info">
+                                <div class="profile-picture">
+                                    <img src="/static/assets/images/user_icon.png" alt="Foto de perfil">
+                                    <button class="btn-change-photo">Cambiar foto</button>
+                                </div>
+                                <div class="profile-data">
+                                    <div class="form-group">
+                                        <label for="username">Nombre de usuario</label>
+                                        <input type="text" id="username" value="Usuario123">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="email">Correo electrónico</label>
+                                        <input type="email" id="email" value="usuario@ejemplo.com">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Sección de Accesibilidad -->
+                    <div class="config-section">
+                        <h3>Configuración de Accesibilidad</h3>
+                        <div class="accessibility-settings">
+                            <div class="setting-item">
+                                <span>Tamaño de fuente</span>
+                                <div class="setting-controls">
+                                    <button class="btn-setting">-</button>
+                                    <span>Normal</span>
+                                    <button class="btn-setting">+</button>
+                                </div>
+                            </div>
+                            <div class="setting-item">
+                                <span>Contraste</span>
+                                <div class="setting-controls">
+                                    <select class="select-setting">
+                                        <option>Normal</option>
+                                        <option>Alto contraste</option>
+                                        <option>Modo oscuro</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="setting-item">
+                                <span>Velocidad de lectura</span>
+                                <div class="slider-control">
+                                    <input type="range" min="1" max="10" value="5">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Sección de Notificaciones -->
+                    <div class="config-section">
+                        <h3>Notificaciones</h3>
+                        <div class="notification-settings">
+                            <div class="setting-toggle">
+                                <span>Recibir notificaciones</span>
+                                <label class="switch">
+                                    <input type="checkbox" checked>
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                            <div class="setting-toggle">
+                                <span>Sonidos de notificación</span>
+                                <label class="switch">
+                                    <input type="checkbox">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="config-actions">
+                    <button class="btn-cancel">Cancelar</button>
+                    <button class="btn-save">Guardar Cambios</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

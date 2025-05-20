@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auris - Asistente Académico Inclusivo</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/visual_mode.css') }}">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Barra lateral izquierda -->
+        <div class="sidebar">
+            <div class="logo-container">
+                <img src="/static/assets/images/logo.png" alt="Logo de Auris" class="logo">
+            </div>
+            <nav class="main-nav">
+                <button id="btn-inicio" class="nav-button">INICIO</button>
+                <button id="btn-modo-visual" class="nav-button active">MODO VISUAL</button>
+                <button id="btn-modo-auditivo" class="nav-button">MODO AUDITIVO</button>
+                <button id="btn-biblioteca" class="nav-button">BIBLIOTECA</button>
+                <button id="btn-configuracion" class="nav-button">CONFIGURACIÓN</button>
+            </nav>
+        </div>
+
+        <!-- Contenido principal - Modo Visual -->
+        <main class="main-content">
+            <div class="visual-mode-card">
+                <div class="visual-mode-header">
+                    <h2>Asistente Visual</h2>
+                    <p>Conversión de texto a voz</p>
+                </div>
+                
+                <div class="document-section">
+                    <h3>Cargar Documentos</h3>
+                    <div class="document-buttons">
+                        <div class="left-buttons">
+                            <button class="btn-gray">Seleccionar archivo</button>
+                        </div>
+                        <div class="right-buttons">
+                            <button class="btn-orange">Examinar</button>
+                        </div>
+                    </div>
+                    <div class="document-buttons">
+                        <div class="left-buttons">
+                            <button class="btn-gray">URL del documento</button>
+                        </div>
+                        <div class="right-buttons">
+                            <button class="btn-orange">Obtener</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="reading-section">
+                    <h3>Texto a leer</h3>
+                    <div class="reading-content">
+                        <p>Capítulo 3: Leyes del movimiento</p>
+                        <p>La primera ley de newton establece que todo cuerpo permanece en su estado original de velocidad</p>
+                        <p>[Continúa el texto...]</p>
+                    </div>
+                    <div class="playback-controls">
+                        <div class="playback-buttons">
+                            <button class="play-btn">
+                                <i class="pause-icon">||</i>
+                            </button>
+                        </div>
+                        <div class="playback-slider">
+                            <div class="playback-fill"></div>
+                        </div>
+                        <div class="playback-info">
+                            <span>Velocidad</span>
+                        </div>
+                        <div class="save-button">
+                            <button class="btn-orange">Guardar Lectura</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/visual_assistant.js') }}"></script>
+</body>
+</html>
