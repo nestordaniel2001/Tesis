@@ -1,10 +1,10 @@
-/* Estilos para la vista de Biblioteca */
+/* Estilos adicionales para la vista de Biblioteca */
+/* Estos estilos complementan el CSS principal */
+
+/* Estilos de la tarjeta de biblioteca */
 .library-card {
-    background-color: var(--light-bg);
-    border-radius: var(--border-radius);
     border: 2px solid #ddd;
     padding: 20px;
-    height: 100%;
 }
 
 .library-header {
@@ -21,6 +21,7 @@
     color: var(--gray-text);
 }
 
+/* Estilos de búsqueda */
 .library-search {
     display: flex;
     gap: 10px;
@@ -32,7 +33,6 @@
     padding: 10px 15px;
     border-radius: 25px;
     border: 1px solid #ddd;
-    font-size: 14px;
 }
 
 .btn-search {
@@ -40,16 +40,16 @@
     border-radius: 25px;
     border: none;
     background-color: var(--primary-blue);
-    color: white;
+    color: var(--light-bg);
     font-weight: bold;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
+    transition: background-color 0.3s;
 }
 
 .btn-search:hover {
     background-color: var(--secondary-blue);
 }
 
+/* Estilos de filtros */
 .library-filters {
     display: flex;
     gap: 10px;
@@ -63,8 +63,7 @@
     border: 1px solid var(--primary-blue);
     background-color: transparent;
     color: var(--primary-blue);
-    cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.3s;
 }
 
 .filter-btn:hover {
@@ -73,9 +72,10 @@
 
 .filter-btn.active {
     background-color: var(--primary-blue);
-    color: white;
+    color: var(--light-bg);
 }
 
+/* Estilos de elementos de biblioteca */
 .library-items {
     display: flex;
     flex-direction: column;
@@ -90,7 +90,7 @@
     border-radius: var(--border-radius);
     background-color: #f9f9f9;
     border: 1px solid #eee;
-    transition: transform 0.3s ease;
+    transition: transform 0.3s, box-shadow 0.3s;
 }
 
 .library-item:hover {
@@ -98,41 +98,18 @@
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
 }
 
-.item-icon {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-right: 15px;
-}
-
-.visual-item {
-    background-color: var(--primary-orange);
-}
-
-.auditory-item {
-    background-color: var(--primary-blue);
-}
-
-.item-icon img {
-    width: 60%;
-    height: auto;
-}
-
+/* Estilos de íconos y acciones */
 .item-info {
     flex: 1;
 }
 
 .item-info h3 {
-    font-size: 16px;
     margin-bottom: 5px;
 }
 
 .item-info p {
-    font-size: 14px;
     color: var(--gray-text);
+    font-size: 0.9em;
 }
 
 .item-actions {
@@ -144,14 +121,16 @@
     padding: 8px 15px;
     border-radius: 20px;
     border: none;
-    background-color: var(--primary-blue);
-    color: white;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
+    color: var(--light-bg);
+    transition: background-color 0.3s;
 }
 
 .btn-item-action:first-child {
     background-color: var(--primary-orange);
+}
+
+.btn-item-action:last-child {
+    background-color: var(--primary-blue);
 }
 
 .btn-item-action:first-child:hover {
@@ -162,6 +141,7 @@
     background-color: var(--secondary-blue);
 }
 
+/* Estilos de paginación */
 .pagination {
     display: flex;
     justify-content: center;
@@ -175,8 +155,7 @@
     border: 1px solid var(--primary-blue);
     background-color: transparent;
     color: var(--primary-blue);
-    cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.3s;
 }
 
 .pagination-btn:hover {
@@ -195,8 +174,7 @@
     justify-content: center;
     align-items: center;
     border-radius: 50%;
-    cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.3s;
 }
 
 .page-number:hover {
@@ -205,16 +183,15 @@
 
 .page-number.active {
     background-color: var(--primary-blue);
-    color: white;
+    color: var(--light-bg);
 }
 
-/* Estilos para la vista de Configuración */
+/* Estilos adicionales para la vista de Configuración */
+/* Estos estilos complementan el CSS principal */
+
 .config-card {
-    background-color: var(--light-bg);
-    border-radius: var(--border-radius);
     border: 2px solid #ddd;
     padding: 20px;
-    height: 100%;
 }
 
 .config-header {
@@ -231,6 +208,7 @@
     color: var(--gray-text);
 }
 
+/* Secciones de configuración */
 .config-sections {
     display: flex;
     flex-direction: column;
@@ -251,6 +229,7 @@
     color: var(--primary-blue);
 }
 
+/* Perfil de usuario */
 .profile-settings {
     display: flex;
     flex-direction: column;
@@ -284,10 +263,9 @@
     border-radius: 20px;
     border: none;
     background-color: var(--primary-orange);
-    color: white;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-    font-size: 14px;
+    color: var(--light-bg);
+    transition: background-color 0.3s;
+    font-size: 0.9em;
 }
 
 .btn-change-photo:hover {
@@ -308,7 +286,7 @@
 }
 
 .form-group label {
-    font-size: 14px;
+    font-size: 0.9em;
     color: var(--gray-text);
 }
 
@@ -316,9 +294,9 @@
     padding: 10px 15px;
     border-radius: 10px;
     border: 1px solid #ddd;
-    font-size: 14px;
 }
 
+/* Configuración de accesibilidad */
 .accessibility-settings {
     display: flex;
     flex-direction: column;
@@ -348,10 +326,9 @@
     border-radius: 50%;
     border: none;
     background-color: var(--primary-blue);
-    color: white;
+    color: var(--light-bg);
     font-weight: bold;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
+    transition: background-color 0.3s;
 }
 
 .btn-setting:hover {
@@ -362,8 +339,7 @@
     padding: 8px 15px;
     border-radius: 10px;
     border: 1px solid #ddd;
-    font-size: 14px;
-    background-color: white;
+    background-color: var(--light-bg);
 }
 
 .slider-control {
@@ -385,9 +361,9 @@
     height: 18px;
     border-radius: 50%;
     background-color: var(--primary-blue);
-    cursor: pointer;
 }
 
+/* Configuración de notificaciones */
 .notification-settings {
     display: flex;
     flex-direction: column;
@@ -418,7 +394,6 @@
 
 .slider {
     position: absolute;
-    cursor: pointer;
     top: 0;
     left: 0;
     right: 0;
@@ -434,7 +409,7 @@
     width: 16px;
     left: 4px;
     bottom: 4px;
-    background-color: white;
+    background-color: var(--light-bg);
     transition: .4s;
 }
 
@@ -454,6 +429,7 @@ input:checked + .slider:before {
     border-radius: 50%;
 }
 
+/* Botones de acción */
 .config-actions {
     display: flex;
     justify-content: flex-end;
@@ -468,8 +444,7 @@ input:checked + .slider:before {
     background-color: transparent;
     color: var(--primary-blue);
     font-weight: bold;
-    cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.3s;
 }
 
 .btn-cancel:hover {
@@ -481,10 +456,9 @@ input:checked + .slider:before {
     border-radius: 25px;
     border: none;
     background-color: var(--primary-blue);
-    color: white;
+    color: var(--light-bg);
     font-weight: bold;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
+    transition: background-color 0.3s;
 }
 
 .btn-save:hover {
