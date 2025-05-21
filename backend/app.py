@@ -1,7 +1,7 @@
 import sys
 import os
 import json
-from flask import Flask, request, jsonify, render_template, session
+from flask import Flask, request, jsonify, render_template, session, send_from_directory
 from flask_cors import CORS
 import nltk
 import pyttsx3
@@ -27,12 +27,12 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if project_root not in sys.path:
     sys.path.append(project_root)
 
-# Obtener la ruta absoluta del directorio actual (donde está app.py)
-basedir = os.path.abspath(os.path.dirname(__file__))
+# Usa la raíz del proyecto como referencia
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
 # Construir las rutas absolutas
-template_dir = os.path.join(basedir, '..', 'frontend', 'templates')
-static_dir = os.path.join(basedir, '..', 'frontend', 'static')
+template_dir = os.path.join(project_root, 'frontend', 'templates')
+static_dir = os.path.join(project_root, 'frontend', 'static')
 
 # Crear la aplicación Flask con rutas absolutas
 app = Flask(__name__,
