@@ -1,13 +1,31 @@
 import sys
 import os
-
-# Añadir la carpeta raíz del proyecto al PYTHONPATH
-sys.path.append(os.path.abspath("."))
-
-# Importaciones principales
+import json
 from flask import Flask, request, jsonify, render_template, session
 from flask_cors import CORS
-import os
+import nltk
+import pyttsx3
+
+# Asegúrate de que NLTK use una carpeta persistente en Render
+nltk.data.path.append("/opt/render/nltk_data")
+
+# Descargar paquetes necesarios si no existen
+try:
+    nltk.data.find('tokenizers/punkt')
+    nltk.data.find('corpora/stopwords')
+except LookupError:
+    nltk.download(['punkt', 'stopwords'], download_dir="/opt/render/nltk_data")
+
+# Forzar un motor compatible de pyttsx3 o usar dummy si no hay salida de audio
+try:
+    engine = pyttsx3.init()
+except Exception as e:
+    engine = pyttsx3.init(driverName='dummy')  # Fallback seguro
+
+# Añadir la carpeta raíz del proyecto al PYTHONPATH (opcional)
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if project_root not in sys.path:
+    sys.path.append(project_root)
 
 # Obtener la ruta absoluta del directorio actual (donde está app.py)
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -21,8 +39,6 @@ app = Flask(__name__,
             template_folder=template_dir,
             static_folder=static_dir)
 CORS(app)
-
-import json
 
 # Importaciones locales del proyecto
 from models.speech_recognition import SpeechRecognizer
@@ -46,25 +62,30 @@ def index():
     """Página principal de Auris"""
     return render_template('index.html')
 
+
 @app.route('/modo_visual')
 def modo_visual():
     """Página del asistente en modo visual"""
     return render_template('Modo_Visual.html')
+
 
 @app.route('/modo_auditivo')
 def modo_auditivo():
     """Página del asistente en modo auditivo"""
     return render_template('Modo_Auditivo.html')
 
+
 @app.route('/biblioteca')
 def biblioteca():
     """Página de la biblioteca de recursos"""
     return render_template('library.html')
 
+
 @app.route('/configuracion')
 def configuracion():
     """Página de configuración"""
     return render_template('config.html')
+
 
 # ===== RUTAS DE API =====
 
@@ -83,6 +104,7 @@ def speech_to_text():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
 @app.route('/api/text-to-speech', methods=['POST'])
 def text_to_speech_endpoint():
     """Endpoint para convertir texto a audio"""
@@ -100,6 +122,7 @@ def text_to_speech_endpoint():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
 @app.route('/api/process-text', methods=['POST'])
 def process_text():
     """Endpoint para procesar texto (simplificar, resumir, etc.)"""
@@ -116,6 +139,7 @@ def process_text():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
 @app.route('/api/describe-image', methods=['POST'])
 def describe_image():
     """Endpoint para describir una imagen para usuarios con discapacidad visual"""
@@ -126,12 +150,11 @@ def describe_image():
     detail_level = request.form.get('detail_level', 'medium')
     
     try:
-        # Aquí iría la lógica para describir la imagen
-        # Por ahora devolvemos un placeholder
         description = "Esta es una descripción de la imagen cargada."
         return jsonify({'description': description}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 @app.route('/api/save-preferences', methods=['POST'])
 def save_preferences():
@@ -141,11 +164,11 @@ def save_preferences():
     preferences = data.get('preferences', {})
     
     try:
-        # Guardar preferencias en un archivo o base de datos
         config.save_user_preferences(user_id, preferences)
         return jsonify({'success': True}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 @app.route('/api/get-preferences', methods=['GET'])
 def get_preferences():
@@ -157,6 +180,7 @@ def get_preferences():
         return jsonify(preferences), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 @app.route('/api/accessibility/response', methods=['POST'])
 def get_accessible_response():
@@ -172,14 +196,13 @@ def get_accessible_response():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
 @app.route('/api/history', methods=['GET'])
 def get_user_history():
     """Endpoint para obtener el historial de actividades del usuario"""
     user_id = request.args.get('user_id', 'anonymous')
     
     try:
-        # Implementar lógica para obtener el historial del usuario
-        # Por ahora, devolvemos datos de ejemplo
         history = [
             {
                 'id': '1',
@@ -200,6 +223,7 @@ def get_user_history():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
 @app.route('/api/favorites', methods=['GET', 'POST', 'DELETE'])
 def manage_favorites():
     """Endpoint para gestionar los favoritos del usuario"""
@@ -207,7 +231,6 @@ def manage_favorites():
     
     if request.method == 'GET':
         try:
-            # Obtener favoritos (implementar lógica real)
             favorites = [
                 {
                     'id': '1',
@@ -232,7 +255,6 @@ def manage_favorites():
         item_type = data.get('type')
         
         try:
-            # Añadir a favoritos (implementar lógica real)
             return jsonify({'success': True, 'message': 'Añadido a favoritos'}), 200
         except Exception as e:
             return jsonify({'error': str(e)}), 500
@@ -241,12 +263,12 @@ def manage_favorites():
         item_id = request.args.get('item_id')
         
         try:
-            # Eliminar de favoritos (implementar lógica real)
             return jsonify({'success': True, 'message': 'Eliminado de favoritos'}), 200
         except Exception as e:
             return jsonify({'error': str(e)}), 500
 
-print("Template folder:", app.template_folder)
-print("Static folder:", app.static_folder)
+
+# === INICIAR LA APP ===
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
