@@ -2,7 +2,6 @@ Flask==3.1.1
 flask_cors==6.0.0
 gTTS==2.5.4
 nltk==3.9.1
-pip==24.3.1
 pip==25.1.1
 pyttsx3==2.98
 transformers==4.52.1
