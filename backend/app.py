@@ -25,11 +25,11 @@ CORS(app)
 import json
 
 # Importaciones locales del proyecto
-from backend.models.speech_recognition import SpeechRecognizer
-from backend.models.text_to_speech import TextToSpeech
-from backend.models.text_processing import TextProcessor
-from backend.utils.accessibility import create_accessible_response
-from backend.utils.config import Config
+from models.speech_recognition import SpeechRecognizer
+from models.text_to_speech import TextToSpeech
+from models.text_processing import TextProcessor
+from utils.accessibility import create_accessible_response
+from utils.config import Config
 
 # Inicializar configuración
 config = Config()
