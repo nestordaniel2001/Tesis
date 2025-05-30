@@ -1,215 +1,434 @@
-/* JavaScript para el asistente visual */
+// Verificación de variables globales
+if (typeof utterance === 'undefined') {
+    var utterance = null;
+    var isPaused = false;
+    var isReading = false;
+    var currentIndex = 0;
+    var sentences = [];
+    var progressInterval = null;
+    var totalDuration = 0;
+    var startTime = 0;
+}
 
-document.addEventListener('DOMContentLoaded', function() {
-    // Referencias a elementos del DOM
-    const fileUpload = document.getElementById('file-upload');
-    const examineButton = document.getElementById('examine-button');
-    const documentUrl = document.getElementById('document-url');
-    const getUrlButton = document.getElementById('get-url-button');
-    const textToRead = document.getElementById('text-to-read');
-    const playPauseButton = document.getElementById('play-pause-button');
-    const speedControl = document.getElementById('speed-control');
-    const saveReadingButton = document.getElementById('save-reading-button');
-    const readMore = document.getElementById('read-more');
+const synth = window.speechSynthesis;
 
-    // Estado de la aplicación
-    let isPlaying = false;
-    let currentSpeed = 1.0;
-    let currentText = textToRead.innerText;
-    let speechSynthesis = window.speechSynthesis;
-    let speechUtterance = null;
+// Función para inicializar solo una vez
+function initSpeechAssistant() {
+    // Si ya está inicializado, salir
+    if (window.speechAssistantInitialized) return;
+    window.speechAssistantInitialized = true;
 
-    // Configurar eventos
-    examineButton.addEventListener('click', function() {
-        fileUpload.click();
-    });
+    // Elementos del DOM
+    const btnExaminar = document.getElementById("btn-examinar");
+    const fileInput = document.getElementById("file-input");
+    const archivoNombreBtn = document.getElementById("archivo-nombre");
+    const readingContent = document.querySelector(".reading-content");
+    const playPauseBtn = document.getElementById("play-pause-btn");
+    const progressBar = document.getElementById("progress-bar");
+    const speedControl = document.getElementById("speed-control");
+    const speedDisplay = document.getElementById("speed-display");
+    const overlay = document.getElementById("overlay");
+    const btnCerrarMax = document.getElementById("btn-cerrar-max");
 
-    fileUpload.addEventListener('change', function(event) {
-        if (event.target.files && event.target.files[0]) {
+    // Verificación de elementos esenciales
+    if (!playPauseBtn || !progressBar || !speedControl) {
+        console.error("Elementos esenciales no encontrados");
+        return;
+    }
+
+    // Evento para el botón Examinar
+    if (btnExaminar && fileInput) {
+        btnExaminar.addEventListener("click", () => fileInput.click());
+    }
+
+    // Evento para selección de archivo
+    if (fileInput) {
+        fileInput.addEventListener("change", async (event) => {
             const file = event.target.files[0];
-            processFile(file);
+            if (!file) return;
+
+            archivoNombreBtn.textContent = file.name;
+
+            try {
+                const formData = new FormData();
+                formData.append("file", file);
+
+                const res = await fetch("/leer-archivo", {
+                    method: "POST",
+                    body: formData
+                });
+
+                const data = await res.json();
+
+                if (data.texto) {
+                    mostrarTexto(data.texto);
+                } else {
+                    alert("No se pudo leer el archivo.");
+                }
+            } catch (err) {
+                console.error("Error al leer archivo:", err);
+                alert("Hubo un error al leer el archivo.");
+            }
+        });
+    }
+
+    // Botón Limpiar
+    document.getElementById("btn-limpiar")?.addEventListener("click", () => {
+        if (readingContent) {
+            readingContent.innerHTML = "";
+            if (archivoNombreBtn) archivoNombreBtn.textContent = "Seleccionar archivo";
+            stopReading();
         }
     });
 
-    getUrlButton.addEventListener('click', function() {
-        const url = documentUrl.value.trim();
-        if (url) {
-            fetchDocument(url);
-        } else {
-            showNotification('Por favor, ingrese una URL válida');
+    // Botones Zoom
+    document.getElementById("btn-zoom-in")?.addEventListener("click", () => {
+        if (readingContent) {
+            const currentSize = parseFloat(getComputedStyle(readingContent).fontSize);
+            readingContent.style.fontSize = `${currentSize + 2}px`;
         }
     });
 
-    playPauseButton.addEventListener('click', function() {
+    document.getElementById("btn-zoom-out")?.addEventListener("click", () => {
+        if (readingContent) {
+            const currentSize = parseFloat(getComputedStyle(readingContent).fontSize);
+            if (currentSize > 10) {
+                readingContent.style.fontSize = `${currentSize - 2}px`;
+            }
+        }
+    });
+
+    // Botón Tamaño
+    document.getElementById("btn-toggle-size")?.addEventListener("click", () => {
+        if (readingContent) {
+            const isMaximized = readingContent.classList.contains("maximized");
+            readingContent.classList.toggle("maximized");
+            if (overlay) overlay.style.display = isMaximized ? "none" : "block";
+        }
+    });
+
+    // Cerrar vista maximizada
+    if (btnCerrarMax) {
+        btnCerrarMax.addEventListener("click", () => {
+            if (readingContent) {
+                readingContent.classList.remove("maximized");
+                if (overlay) overlay.style.display = "none";
+            }
+        });
+    }
+
+    if (overlay) {
+        overlay.addEventListener("click", () => {
+            if (readingContent) {
+                readingContent.classList.remove("maximized");
+                overlay.style.display = "none";
+            }
+        });
+    }
+
+    // Control de velocidad - CORREGIDO
+    speedControl.addEventListener("input", () => {
+        const newRate = parseFloat(speedControl.value);
+        
+        // Actualizar display de velocidad
+        if (speedDisplay) {
+            speedDisplay.textContent = `${newRate}x`;
+        }
+        
+        // Si hay una lectura en curso, aplicar nueva velocidad sin interrumpir
+        if (utterance && isReading && !isPaused) {
+            // Cancelar la síntesis actual
+            synth.cancel();
+            
+            // Crear nueva utterance con la velocidad actualizada
+            setTimeout(() => {
+                speakFromCurrentIndex();
+            }, 50);
+        }
+    });
+
+    // Botón Play/Pause - SOLO responde a clics en el botón
+    playPauseBtn.addEventListener("click", (e) => {
+        e.stopPropagation(); // Evitar propagación del evento
         togglePlayPause();
     });
 
-    speedControl.addEventListener('input', function() {
-        currentSpeed = parseFloat(this.value);
-        updatePlaybackSpeed();
+    // Prevenir que otros clics interfieran con la reproducción
+    document.addEventListener("click", (e) => {
+        // Solo pausar si se hace clic fuera del área de controles de audio
+        const audioControls = document.querySelector(".playback-controls");
+        const readingArea = document.querySelector(".reading-content");
         
-        // Actualizar la etiqueta de velocidad (opcional)
-        document.querySelector('.speed-label').textContent = `Velocidad: ${currentSpeed.toFixed(1)}x`;
-    });
-
-    saveReadingButton.addEventListener('click', function() {
-        saveReading();
-    });
-
-    readMore.addEventListener('click', function(e) {
-        e.preventDefault();
-        // Aquí se podría cargar más texto o expandir el contenido existente
-        showNotification('Cargando contenido adicional...');
-    });
-
-    // Funciones de la aplicación
-    function processFile(file) {
-        // Simular procesamiento de archivo
-        const reader = new FileReader();
-        
-        reader.onload = function(e) {
-            const content = e.target.result;
-            // Actualizar el texto a leer (simulado)
-            updateTextContent("Contenido cargado desde archivo: " + file.name + "\n\n" + 
-                              "El contenido del archivo se mostraría aquí. Este es un texto de ejemplo " +
-                              "para simular el contenido extraído del archivo subido por el usuario.");
-            showNotification('Archivo cargado exitosamente');
-        };
-        
-        reader.onerror = function() {
-            showNotification('Error al leer el archivo', 'error');
-        };
-        
-        // Leer como texto (ajustar según el tipo de archivo)
-        reader.readAsText(file);
-    }
-
-    function fetchDocument(url) {
-        // Simular obtención de documento desde URL
-        showNotification('Obteniendo documento desde URL...');
-        
-        // Simular tiempo de carga
-        setTimeout(function() {
-            updateTextContent("Contenido cargado desde URL: " + url + "\n\n" + 
-                              "Este es un texto de ejemplo para simular el contenido " +
-                              "que se habría extraído de la URL proporcionada por el usuario.");
-            showNotification('Documento obtenido exitosamente');
-        }, 1500);
-    }
-
-    function togglePlayPause() {
-        if (!speechUtterance) {
-            startReading();
-        } else {
-            if (isPlaying) {
-                pauseReading();
-            } else {
-                resumeReading();
-            }
+        // No hacer nada si el clic fue en los controles o en el área de lectura
+        if (audioControls?.contains(e.target) || readingArea?.contains(e.target)) {
+            return;
         }
-    }
+    });
 
-    function startReading() {
-        if (speechSynthesis) {
-            speechUtterance = new SpeechSynthesisUtterance(currentText);
-            speechUtterance.rate = currentSpeed;
-            speechUtterance.lang = 'es-ES'; // Ajustar según el idioma
-            
-            speechUtterance.onend = function() {
-                isPlaying = false;
-                updatePlayPauseButton();
-                speechUtterance = null;
+    // Cargar voces disponibles
+    loadVoices();
+}
+
+// Cambiar el DOMContentLoaded para usar la función de inicialización
+document.addEventListener("DOMContentLoaded", function() {
+    // Limpiar cualquier inicialización previa
+    if (window.speechAssistantInitialized) {
+        synth.cancel();
+        if (progressInterval) clearInterval(progressInterval);
+    }
+    
+    initSpeechAssistant();
+});
+
+// Función para mostrar texto en el área de lectura
+function mostrarTexto(texto) {
+    const readingContent = document.querySelector(".reading-content");
+    if (!readingContent) return;
+
+    stopReading();
+    readingContent.innerHTML = "";
+
+    const parrafos = texto.split(/\r?\n/);
+    parrafos.forEach(line => {
+        if (line.trim() !== "") {
+            const p = document.createElement("p");
+            p.textContent = line;
+            readingContent.appendChild(p);
+        }
+    });
+}
+
+// Función para cargar voces
+function loadVoices() {
+    return new Promise(resolve => {
+        const voices = synth.getVoices();
+        if (voices.length) {
+            resolve(voices);
+        } else {
+            synth.onvoiceschanged = () => {
+                resolve(synth.getVoices());
             };
-            
-            speechSynthesis.speak(speechUtterance);
-            isPlaying = true;
-            updatePlayPauseButton();
-        } else {
-            showNotification('La síntesis de voz no está disponible en su navegador', 'error');
         }
+    });
+}
+
+// Función para hablar desde el índice actual - CORREGIDA
+async function speakFromCurrentIndex() {
+    if (currentIndex >= sentences.length) {
+        stopReading();
+        return;
     }
 
-    function pauseReading() {
-        if (speechSynthesis && isPlaying) {
-            speechSynthesis.pause();
-            isPlaying = false;
-            updatePlayPauseButton();
-        }
-    }
+    const voices = await loadVoices();
+    utterance = new SpeechSynthesisUtterance();
+    utterance.voice = voices.find(voice => voice.lang === 'es-ES') || voices[0];
+    utterance.lang = 'es-ES';
+    utterance.rate = parseFloat(document.getElementById("speed-control").value);
+    utterance.text = sentences[currentIndex];
 
-    function resumeReading() {
-        if (speechSynthesis && !isPlaying && speechUtterance) {
-            speechSynthesis.resume();
-            isPlaying = true;
-            updatePlayPauseButton();
-        }
-    }
+    // Marcar como reproduciendo
+    isReading = true;
+    isPaused = false;
 
-    function updatePlaybackSpeed() {
-        if (speechUtterance) {
-            // Cancelar y reiniciar con la nueva velocidad
-            const currentPosition = speechSynthesis.speaking ? speechSynthesis.currentTime : 0;
-            speechSynthesis.cancel();
-            
-            speechUtterance = new SpeechSynthesisUtterance(currentText);
-            speechUtterance.rate = currentSpeed;
-            speechUtterance.lang = 'es-ES';
-            
-            // Intentar reanudar desde la posición actual (limitaciones de la API)
-            speechSynthesis.speak(speechUtterance);
-            isPlaying = true;
-            updatePlayPauseButton();
-        }
-    }
+    utterance.onstart = () => {
+        startTime = Date.now();
+        updateButtonState();
+        startProgress();
+    };
 
-    function updatePlayPauseButton() {
-        if (isPlaying) {
-            playPauseButton.innerHTML = '<span>&#10074;&#10074;</span>'; // Ícono de pausa
-        } else {
-            playPauseButton.innerHTML = '<span>&#9658;</span>'; // Ícono de reproducción
-        }
-    }
-
-    function updateTextContent(text) {
-        currentText = text;
-        textToRead.innerText = text;
+    utterance.onend = () => {
+        currentIndex++;
+        updateProgress();
         
-        // Reiniciar la lectura si estaba en curso
-        if (speechUtterance) {
-            speechSynthesis.cancel();
-            speechUtterance = null;
-            isPlaying = false;
-            updatePlayPauseButton();
+        // Solo continuar si no está pausado y hay más oraciones
+        if (!isPaused && currentIndex < sentences.length && isReading) {
+            setTimeout(() => speakFromCurrentIndex(), 50);
+        } else if (currentIndex >= sentences.length) {
+            stopReading();
+        }
+    };
+
+    utterance.onerror = (event) => {
+        console.error("Error en síntesis de voz:", event);
+        stopReading();
+    };
+
+    synth.speak(utterance);
+}
+
+// Función principal para iniciar la lectura - MEJORADA
+async function speakText() {
+    try {
+        const text = document.querySelector(".reading-content")?.innerText.trim();
+        if (!text) return alert("No hay texto para leer.");
+
+        // Dividir el texto en oraciones de manera más inteligente
+        sentences = text.split(/[.!?]+\s*/).filter(s => s.trim().length > 0);
+        
+        // Si no hay oraciones, usar párrafos
+        if (sentences.length === 0) {
+            sentences = text.split(/\n+/).filter(s => s.trim().length > 0);
+        }
+        
+        // Si aún no hay contenido, usar el texto completo
+        if (sentences.length === 0) {
+            sentences = [text];
+        }
+        
+        currentIndex = 0;
+        isPaused = false;
+        isReading = true;
+
+        synth.cancel(); // Limpiar cualquier síntesis anterior
+        
+        speakFromCurrentIndex();
+    } catch (error) {
+        console.error("Error en speakText:", error);
+        alert("Error al iniciar la lectura");
+    }
+}
+
+// Detener la lectura completamente - CORREGIDA
+function stopReading() {
+    isPaused = false;
+    isReading = false;
+    synth.cancel();
+    stopProgress();
+    currentIndex = 0;
+    updateButtonState();
+    
+    // Resetear barra de progreso
+    const progressBar = document.getElementById("progress-bar");
+    if (progressBar) {
+        progressBar.style.width = "0%";
+    }
+}
+
+// Pausar la lectura - MANTIENE LA POSICIÓN
+function pauseReading() {
+    isPaused = true;
+    isReading = false;
+    synth.cancel();
+    stopProgress();
+    updateButtonState();
+    // NO resetear currentIndex para mantener la posición
+}
+
+// Reanudar la lectura desde donde se pausó
+function resumeReading() {
+    if (currentIndex < sentences.length) {
+        isPaused = false;
+        isReading = true;
+        speakFromCurrentIndex();
+    }
+}
+
+// Alternar entre play/pause - LÓGICA SIMPLIFICADA
+function togglePlayPause() {
+    console.log(`Estado actual: isReading=${isReading}, isPaused=${isPaused}, currentIndex=${currentIndex}`);
+    
+    if (isReading && !isPaused) {
+        // Está reproduciendo -> PAUSAR
+        pauseReading();
+    } else if (isPaused || (currentIndex > 0 && currentIndex < sentences.length)) {
+        // Está pausado o interrumpido -> REANUDAR
+        resumeReading();
+    } else {
+        // No está reproduciendo y está al inicio -> INICIAR
+        speakText();
+    }
+}
+
+// Actualizar estado del botón
+function updateButtonState() {
+    const playPauseBtn = document.getElementById("play-pause-btn");
+    if (!playPauseBtn) return;
+    
+    if (isReading && !isPaused) {
+        playPauseBtn.innerHTML = "⏸️";
+        playPauseBtn.title = "Pausar";
+    } else {
+        playPauseBtn.innerHTML = "▶️";
+        playPauseBtn.title = isPaused ? "Reanudar" : "Reproducir";
+    }
+}
+
+// Control de progreso - MEJORADO
+function startProgress() {
+    stopProgress();
+    
+    progressInterval = setInterval(() => {
+        updateProgress();
+    }, 100);
+}
+
+function stopProgress() {
+    if (progressInterval) {
+        clearInterval(progressInterval);
+        progressInterval = null;
+    }
+}
+
+function updateProgress() {
+    const progressBar = document.getElementById("progress-bar");
+    if (!progressBar || sentences.length === 0) return;
+
+    // Calcular progreso basado en oraciones completadas
+    let progress = (currentIndex / sentences.length) * 100;
+    
+    // Si está hablando actualmente, añadir progreso parcial
+    if (synth.speaking && currentIndex < sentences.length) {
+        const partialProgress = (1 / sentences.length) * 100 * 0.5;
+        progress += partialProgress;
+    }
+    
+    progress = Math.min(progress, 100);
+    progressBar.style.width = `${progress}%`;
+}
+
+// Función para manejar el clic en la barra de progreso
+function handleProgressClick(event) {
+    if (sentences.length === 0) return;
+
+    const progressContainer = document.getElementById("progress-container");
+    if (!progressContainer) return;
+
+    const rect = progressContainer.getBoundingClientRect();
+    const clickX = event.clientX - rect.left;
+    const percentage = Math.max(0, Math.min(1, clickX / rect.width));
+    const newIndex = Math.floor(percentage * sentences.length);
+
+    if (newIndex >= 0 && newIndex < sentences.length) {
+        const wasReading = isReading && !isPaused;
+        
+        synth.cancel();
+        currentIndex = newIndex;
+        updateProgress();
+        
+        if (wasReading) {
+            setTimeout(() => speakFromCurrentIndex(), 100);
         }
     }
+}
 
-    function saveReading() {
-        // Simulación de guardado
-        showNotification('Guardando lectura en la biblioteca...');
-        
-        setTimeout(function() {
-            showNotification('Lectura guardada exitosamente');
-        }, 1000);
+// Event listeners adicionales
+document.addEventListener("DOMContentLoaded", function() {
+    const progressContainer = document.getElementById("progress-container");
+    if (progressContainer) {
+        progressContainer.addEventListener("click", handleProgressClick);
+        progressContainer.style.cursor = "pointer";
     }
+    
+    // Inicializar display de velocidad
+    const speedDisplay = document.getElementById("speed-display");
+    const speedControl = document.getElementById("speed-control");
+    if (speedDisplay && speedControl) {
+        speedDisplay.textContent = `${speedControl.value}x`;
+    }
+});
 
-    function showNotification(message, type = 'info') {
-        // Crear una notificación temporal
-        const notification = document.createElement('div');
-        notification.className = `notification ${type}`;
-        notification.textContent = message;
-        
-        document.body.appendChild(notification);
-        
-        // Mostrar y luego ocultar
-        setTimeout(function() {
-            notification.classList.add('show');
-            
-            setTimeout(function() {
-                notification.classList.remove('show');
-                setTimeout(function() {
-                    document.body.removeChild(notification);
-                }, 300);
-            }, 3000);
-        }, 10);
-    }
+// Manejar cuando la página se cierra o se recarga
+window.addEventListener("beforeunload", () => {
+    synth.cancel();
+    stopProgress();
 });
