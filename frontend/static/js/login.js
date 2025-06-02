@@ -75,3 +75,13 @@ setTimeout(() => {
     const subtitle = document.querySelector('.logo-subtitle');
     typeWriter(subtitle, 'Tu asistente académico personalizado', 50);
 }, 1000);
+
+
+
+    const visualingreButton = document.querySelector('.login-button');
+    
+    if (visualingreButton) {
+        visualingreButton.addEventListener('click', () => {
+            window.location.href = '/inicio';
+        });
+    }

@@ -218,8 +218,8 @@ except Exception as e:
 
 @app.route('/')
 def index():
-    """Página principal de Auris"""
-    return render_template('index.html')
+    """Página de ingreso"""
+    return render_template('login.html')
 
 @app.route('/modo_visual')
 def modo_visual():
@@ -241,10 +241,10 @@ def configuracion():
     """Página de configuración"""
     return render_template('config.html')
 
-@app.route('/login')
+@app.route('/inicio')
 def login():
     """Página de login"""
-    return render_template('login.html')
+    return render_template('index.html')
 
 @app.route('/leer-archivo', methods=['POST'])
 def leer_archivo():

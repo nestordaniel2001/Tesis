@@ -90,7 +90,7 @@ function setupMainNavigation() {
     // Configurar eventos de clic para cada botón
     if (inicioBtn) {
         inicioBtn.addEventListener('click', () => {
-            window.location.href = '/';
+            window.location.href = '/inicio';
         });
     }
     
@@ -120,7 +120,7 @@ function setupMainNavigation() {
     
     if (loginBtn) {
         loginBtn.addEventListener('click', () => {
-            window.location.href = '/login';
+            window.location.href = '/';
         });
     }
 
