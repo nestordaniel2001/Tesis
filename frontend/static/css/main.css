@@ -7,6 +7,7 @@
     --dark-bg: #000000;
     --light-bg: #ffffff;
     --gray-text: #666666;
+    --black-text: #000000;
     --border-radius: 15px;
 }
 
@@ -42,6 +43,7 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
+    position: relative;
 }
 
 .logo-container {
@@ -59,6 +61,26 @@ body {
 .logo {
     width: 100%;
     height: 80px;
+}
+
+/* Botón hamburguesa - oculto por defecto */
+#menu-toggle {
+    display: none;
+    background: var(--primary-orange);
+    border: none;
+    color: white;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 15px;
+    border-radius: 25px;
+    margin-bottom: 15px;
+    transition: all 0.3s ease;
+}
+
+#menu-toggle:hover {
+    background: var(--secondary-orange);
+    transform: scale(1.05);
 }
 
 .main-nav {
@@ -221,29 +243,71 @@ body {
     background-color: var(--primary-blue);
 }
 
-/* Responsive */
+/* Responsive - Versión móvil */
 @media (max-width: 768px) {
     .app-container {
         flex-direction: column;
+        margin: 10px;
     }
-    
+
     .sidebar {
         width: 100%;
-        padding: 10px;
+        padding: 15px;
+        position: relative;
     }
-    
+
+    .logo-container {
+        width: 80px;
+        height: 80px;
+        margin-bottom: 15px;
+    }
+
+    /* Mostrar el botón hamburguesa en móvil */
+    #menu-toggle {
+        display: block;
+    }
+
+    /* Ocultar el menú por defecto en móvil */
     .main-nav {
-        flex-direction: row;
-        flex-wrap: wrap;
-        justify-content: center;
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background-color: var(--primary-blue);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        z-index: 1000;
+        padding: 15px 20px;
+        border-radius: 0 0 15px 15px;
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.4s ease-out, padding 0.4s ease-out;
     }
     
+    /* Mostrar el menú cuando tenga la clase active */
+    .main-nav.active {
+        display: flex;
+        max-height: 400px;
+        padding: 15px 20px;
+    }
+    
+    /* Mantener la dirección vertical en móvil */
+    .main-nav {
+        flex-direction: column;
+        gap: 10px;
+    }
+
     .nav-button {
-        width: auto;
-        padding: 10px 15px;
+        padding: 12px 15px;
+        font-size: 14px;
+        white-space: nowrap;
     }
-    
+
     .assistants-container {
         flex-direction: column;
+    }
+
+    .main-content {
+        padding: 15px;
     }
 }

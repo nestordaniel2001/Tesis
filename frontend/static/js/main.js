@@ -43,7 +43,38 @@ document.addEventListener('DOMContentLoaded', () => {
             showNotification('Error al inicializar la aplicación', 'error');
         });
 });
+function setupMobileMenu() {
+    const menuToggle = document.getElementById('menu-toggle');
+    const mainNav = document.querySelector('.main-nav'); // Cambiado a querySelector con clase
 
+    if (menuToggle && mainNav) {
+        menuToggle.addEventListener('click', () => {
+            mainNav.classList.toggle('active');
+            console.log('Menú toggled, active:', mainNav.classList.contains('active'));
+        });
+    } else {
+        console.warn("No se encontró el botón hamburguesa o el menú principal");
+        console.log('menuToggle:', menuToggle);
+        console.log('mainNav:', mainNav);
+    }
+}
+
+// Llamar la función cuando el DOM esté listo
+document.addEventListener('DOMContentLoaded', setupMobileMenu);
+
+// También puedes agregar un event listener para cerrar el menú al hacer clic fuera
+document.addEventListener('click', (event) => {
+    const menuToggle = document.getElementById('menu-toggle');
+    const mainNav = document.querySelector('.main-nav');
+    
+    // Si el clic no fue en el botón hamburguesa ni en el menú, cerrar el menú
+    if (mainNav && menuToggle && 
+        !menuToggle.contains(event.target) && 
+        !mainNav.contains(event.target) && 
+        mainNav.classList.contains('active')) {
+        mainNav.classList.remove('active');
+    }
+});
 /**
  * Configura los eventos de navegación para los botones del menú principal
  */
@@ -54,6 +85,7 @@ function setupMainNavigation() {
     const modoAuditivoBtn = document.getElementById('btn-modo-auditivo');
     const bibliotecaBtn = document.getElementById('btn-biblioteca');
     const configuracionBtn = document.getElementById('btn-configuracion');
+    const loginBtn = document.getElementById('btn-login');
     
     // Configurar eventos de clic para cada botón
     if (inicioBtn) {
@@ -86,6 +118,12 @@ function setupMainNavigation() {
         });
     }
     
+    if (loginBtn) {
+        loginBtn.addEventListener('click', () => {
+            window.location.href = '/login';
+        });
+    }
+
     // Configurar botones de acción rápida en la página principal
     const visualQuickButton = document.querySelector('.visual-button');
     const auditoryQuickButton = document.querySelector('.auditory-button');
