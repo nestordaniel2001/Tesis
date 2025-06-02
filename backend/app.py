@@ -11,28 +11,32 @@ import requests
 import docx2txt
 from PyPDF2 import PdfReader
 
-# Asegúrate de que NLTK use una carpeta persistente en Render
-nltk.data.path.append("/opt/render/nltk_data")
-
-# Descargar paquetes necesarios si no existen
+# Configuración para NLTK en Render
 try:
-    nltk.data.find('tokenizers/punkt')
-    nltk.data.find('corpora/stopwords')
-except LookupError:
+    nltk_data_path = "/opt/render/project/src/nltk_data"
+    os.makedirs(nltk_data_path, exist_ok=True)
+    nltk.data.path.append(nltk_data_path)
+    
+    # Intentar descargar paquetes NLTK solo si no existen
     try:
-        nltk.download(['punkt', 'stopwords'], download_dir="/opt/render/nltk_data")
-    except Exception as e:
-        print(f"No se pudieron descargar los datos de NLTK: {e}")
-
-# Forzar un motor compatible de pyttsx3 o usar dummy si no hay salida de audio
-try:
-    engine = pyttsx3.init()
+        nltk.data.find('tokenizers/punkt')
+        nltk.data.find('corpora/stopwords')
+    except LookupError:
+        try:
+            nltk.download(['punkt', 'stopwords'], download_dir=nltk_data_path, quiet=True)
+        except Exception as e:
+            print(f"Advertencia: No se pudieron descargar los datos de NLTK: {e}")
 except Exception as e:
-    try:
-        engine = pyttsx3.init(driverName='dummy')  # Fallback seguro
-    except Exception as e2:
-        print(f"No se pudo inicializar pyttsx3: {e2}")
-        engine = None
+    print(f"Advertencia: Error configurando NLTK: {e}")
+
+# Configuración segura para pyttsx3 en Render (servidor sin audio)
+engine = None
+try:
+    # En Render no hay sistema de audio, usar dummy driver
+    engine = pyttsx3.init(driverName='dummy')
+except Exception as e:
+    print(f"Advertencia: pyttsx3 no disponible en servidor: {e}")
+    engine = None
 
 # Añadir la carpeta raíz del proyecto al PYTHONPATH (opcional)
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -56,18 +60,33 @@ CORS(app)
 app.secret_key = os.environ.get('SECRET_KEY', 'auris-secret-key-2025')
 
 # ===== CONFIGURACIÓN DE CONEXIÓN MYSQL =====
+# Configuración más robusta para diferentes entornos
 DB_CONFIG = {
-    'host': os.environ.get('DB_HOST', 'localhost'),
-    'user': os.environ.get('DB_USER', 'root'),
-    'password': os.environ.get('DB_PASSWORD', 'Auris2025.'),
-    'database': os.environ.get('DB_NAME', 'auris'),
+    'host': os.environ.get('DB_HOST'),
+    'user': os.environ.get('DB_USER'),
+    'password': os.environ.get('DB_PASSWORD'),
+    'database': os.environ.get('DB_NAME'),
     'port': int(os.environ.get('DB_PORT', '3306')),
     'charset': 'utf8mb4',
-    'autocommit': True
+    'autocommit': True,
+    'connect_timeout': 10,
+    'sql_mode': 'TRADITIONAL'
 }
 
+# Verificar si todas las variables de entorno están configuradas
+DB_AVAILABLE = all([
+    os.environ.get('DB_HOST'),
+    os.environ.get('DB_USER'),
+    os.environ.get('DB_PASSWORD'),
+    os.environ.get('DB_NAME')
+])
+
 def get_db_connection():
-    """Función para obtener conexión a MySQL"""
+    """Función para obtener conexión a MySQL con manejo de errores mejorado"""
+    if not DB_AVAILABLE:
+        print("Advertencia: Variables de entorno de base de datos no configuradas")
+        return None
+        
     try:
         connection = mysql.connector.connect(**DB_CONFIG)
         if connection.is_connected():
@@ -78,9 +97,15 @@ def get_db_connection():
     except Error as e:
         print(f"Error conectando a MySQL: {e}")
         return None
+    except Exception as e:
+        print(f"Error inesperado conectando a BD: {e}")
+        return None
 
 def test_database_connection():
     """Función para verificar la conexión a la base de datos"""
+    if not DB_AVAILABLE:
+        return False, "Variables de entorno de base de datos no configuradas"
+        
     connection = None
     cursor = None
     try:
@@ -94,14 +119,15 @@ def test_database_connection():
             return False, "No se pudo establecer conexión"
     except Error as e:
         return False, f"Error de conexión: {str(e)}"
+    except Exception as e:
+        return False, f"Error inesperado: {str(e)}"
     finally:
         if cursor:
             cursor.close()
         if connection and connection.is_connected():
             connection.close()
 
-
-# ===== RUTA PARA VERIFICAR CONEXIÓN =====
+# ===== RUTAS PARA VERIFICAR CONEXIÓN =====
 @app.route('/api/test-db')
 def test_db_connection():
     """Endpoint para verificar la conexión a la base de datos"""
@@ -121,12 +147,19 @@ def test_db_connection():
     else:
         return jsonify({
             'status': 'error',
-            'message': message
+            'message': message,
+            'db_available': DB_AVAILABLE
         }), 500
 
 @app.route('/api/db-tables')
 def get_tables():
     """Endpoint para ver las tablas existentes"""
+    if not DB_AVAILABLE:
+        return jsonify({
+            'status': 'error',
+            'message': 'Base de datos no configurada'
+        }), 500
+        
     connection = None
     cursor = None
     try:
@@ -158,7 +191,7 @@ def get_tables():
         if connection and connection.is_connected():
             connection.close()
 
-# Importaciones locales del proyecto
+# Importaciones locales del proyecto (con manejo de errores)
 try:
     from models.speech_recognition import SpeechRecognizer
     from models.text_to_speech import TextToSpeech
@@ -178,6 +211,8 @@ try:
 except ImportError as e:
     print(f"⚠️ Advertencia: No se pudieron importar algunos módulos: {e}")
     print("La aplicación continuará con funcionalidad básica")
+except Exception as e:
+    print(f"⚠️ Error cargando módulos: {e}")
 
 # ===== RUTAS DE NAVEGACIÓN PRINCIPAL =====
 
@@ -206,7 +241,10 @@ def configuracion():
     """Página de configuración"""
     return render_template('config.html')
 
-
+@app.route('/login')
+def login():
+    """Página de login"""
+    return render_template('login.html')
 
 @app.route('/leer-archivo', methods=['POST'])
 def leer_archivo():
@@ -243,11 +281,20 @@ def leer_archivo():
 
     except Exception as e:
         return jsonify({'error': f'Error al leer el archivo: {e}'}), 500
-# ===== RUTAS DE API CON MYSQL (usando tablas existentes) =====
+
+# ===== RUTAS DE API CON MYSQL (con fallback si no hay BD) =====
 
 @app.route('/api/users', methods=['GET'])
 def get_users():
     """Endpoint para obtener usuarios desde MySQL"""
+    if not DB_AVAILABLE:
+        return jsonify({
+            'status': 'warning',
+            'message': 'Base de datos no disponible',
+            'users': [],
+            'count': 0
+        }), 200
+        
     connection = None
     cursor = None
     try:
@@ -262,7 +309,10 @@ def get_users():
                 'count': len(users)
             }), 200
         else:
-            return jsonify({'error': 'No se pudo conectar a la base de datos'}), 500
+            return jsonify({
+                'status': 'error',
+                'message': 'No se pudo conectar a la base de datos'
+            }), 500
     except Error as e:
         return jsonify({'error': f'Error MySQL: {str(e)}'}), 500
     finally:
@@ -278,13 +328,18 @@ def save_preferences():
     user_id = data.get('user_id', 1)
     preferences_data = data.get('preferences', {})
     
+    if not DB_AVAILABLE:
+        return jsonify({
+            'status': 'warning',
+            'message': 'Preferencias guardadas localmente (BD no disponible)'
+        }), 200
+    
     connection = None
     cursor = None
     try:
         connection = get_db_connection()
         if connection:
             cursor = connection.cursor()
-            # Adapta esta consulta según la estructura real de tu tabla
             query = "UPDATE user_preferences SET voice_type=%s, speech_speed=%s WHERE user_id=%s"
             values = (
                 preferences_data.get('voice_type', 'default'),
@@ -292,7 +347,6 @@ def save_preferences():
                 user_id
             )
             cursor.execute(query, values)
-            # No necesitas commit porque autocommit=True
             return jsonify({'status': 'success', 'message': 'Preferencias guardadas'}), 200
         else:
             return jsonify({'error': 'No se pudo conectar a la base de datos'}), 500
@@ -308,6 +362,16 @@ def save_preferences():
 def get_preferences():
     """Endpoint para obtener las preferencias de accesibilidad del usuario"""
     user_id = request.args.get('user_id', 1, type=int)
+    
+    if not DB_AVAILABLE:
+        return jsonify({
+            'status': 'warning',
+            'message': 'BD no disponible, usando preferencias por defecto',
+            'preferences': {
+                'voice_type': 'default',
+                'speech_speed': 1.0
+            }
+        }), 200
     
     connection = None
     cursor = None
@@ -436,7 +500,6 @@ def manage_favorites():
     
     if request.method == 'GET':
         try:
-            # Ejemplo básico - adapta según tu tabla de favoritos
             favorites = [
                 {
                     'id': '1',
@@ -473,19 +536,33 @@ def manage_favorites():
         except Exception as e:
             return jsonify({'error': str(e)}), 500
 
+# Ruta de health check para Render
+@app.route('/health')
+def health_check():
+    """Health check endpoint para Render"""
+    return jsonify({
+        'status': 'healthy',
+        'timestamp': str(os.environ.get('RENDER_SERVICE_NAME', 'local')),
+        'database': 'connected' if DB_AVAILABLE else 'not_configured'
+    }), 200
+
 # === INICIALIZACIÓN ===
 if __name__ == '__main__':
     print("🚀 Iniciando aplicación Auris...")
     
-    # Solo verificar la conexión, no crear nada
-    success, message = test_database_connection()
-    if success:
-        print(f"✅ {message}")
+    # Verificar conexión BD solo si está configurada
+    if DB_AVAILABLE:
+        success, message = test_database_connection()
+        if success:
+            print(f"✅ {message}")
+        else:
+            print(f"⚠️ {message}")
     else:
-        print(f"⚠️ {message}")
-        print("La aplicación continuará, pero sin funcionalidad de base de datos")
+        print("⚠️ Base de datos no configurada - funcionando en modo básico")
     
     port = int(os.environ.get("PORT", 5000))
     print(f"🌐 Servidor ejecutándose en puerto {port}")
     
-    app.run(host='0.0.0.0', port=port, debug=True)
+    # En producción (Render) no usar debug=True
+    debug_mode = os.environ.get('FLASK_ENV') == 'development'
+    app.run(host='0.0.0.0', port=port, debug=debug_mode)
