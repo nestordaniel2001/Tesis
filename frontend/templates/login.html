@@ -20,7 +20,7 @@
         <div class="logo-section">
             <div class="logo-container">
                 <!-- Aquí puedes poner tu logo o icono -->
-                <img src="/static/assets/images/logo.png" alt="Logo de Auris" class="logo">
+                <div class="logo-placeholder">🎧</div>
             </div>
             <h1 class="logo-text">Auris</h1>
             <p class="logo-subtitle">Tu asistente académico personalizado</p>
@@ -44,6 +44,7 @@
                     placeholder="Contraseña"
                     required
                     id="password"
+                    minlength="6"
                 >
             </div>
 
@@ -54,11 +55,11 @@
 
         <div class="login-links">
             <a href="#" class="login-link">¿Olvidaste tu contraseña?</a>
-            <a href="#" class="login-link">Crear cuenta</a>
         </div>
     </div>
 
-    <!-- JavaScript -->
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
     <script src="{{ url_for('static', filename='js/login.js') }}"></script>
 </body>
 </html>
