@@ -2,11 +2,10 @@ import sys
 import os
 import json
 import uuid
+import sqlite3
 from datetime import datetime, timedelta
 from flask import Flask, request, jsonify, render_template, session, send_from_directory
 from flask_cors import CORS
-import mysql.connector
-from mysql.connector import Error
 import bcrypt
 import jwt
 import nltk
@@ -58,37 +57,21 @@ CORS(app)
 # Configurar clave secreta para sesiones
 app.secret_key = os.environ.get('SECRET_KEY', 'auris-secret-key-2025')
 
-# ===== CONFIGURACIÓN DE BASE DE DATOS =====
-DB_CONFIG = {
-    'host': os.environ.get('DB_HOST', 'localhost'),
-    'user': os.environ.get('DB_USER', 'root'),
-    'password': os.environ.get('DB_PASSWORD', ''),
-    'database': os.environ.get('DB_NAME', 'Auris'),
-    'port': int(os.environ.get('DB_PORT', '3306')),
-    'charset': 'utf8mb4',
-    'autocommit': True,
-    'connect_timeout': 10,
-    'sql_mode': 'TRADITIONAL'
-}
+# ===== CONFIGURACIÓN DE BASE DE DATOS SQLITE =====
+DB_PATH = os.path.join(os.path.dirname(__file__), 'auris.db')
 
 # JWT Configuration
 JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'auris-jwt-secret-2025')
 JWT_ACCESS_TOKEN_EXPIRES = int(os.environ.get('JWT_ACCESS_TOKEN_EXPIRES', '86400'))
 
 def get_db_connection():
-    """Función para obtener conexión a MySQL"""
+    """Función para obtener conexión a SQLite"""
     try:
-        connection = mysql.connector.connect(**DB_CONFIG)
-        if connection.is_connected():
-            return connection
-        else:
-            print("Error: Conexión no establecida")
-            return None
-    except Error as e:
-        print(f"Error conectando a MySQL: {e}")
-        return None
+        connection = sqlite3.connect(DB_PATH)
+        connection.row_factory = sqlite3.Row  # Para acceder por nombre de columna
+        return connection
     except Exception as e:
-        print(f"Error inesperado conectando a BD: {e}")
+        print(f"Error conectando a SQLite: {e}")
         return None
 
 def init_database():
@@ -96,40 +79,36 @@ def init_database():
     connection = None
     cursor = None
     try:
-        # Crear conexión sin especificar base de datos
-        temp_config = DB_CONFIG.copy()
-        temp_config.pop('database', None)
-        connection = mysql.connector.connect(**temp_config)
+        connection = get_db_connection()
+        if not connection:
+            return False
+            
         cursor = connection.cursor()
-        
-        # Crear base de datos si no existe
-        cursor.execute(f"CREATE DATABASE IF NOT EXISTS {DB_CONFIG['database']}")
-        cursor.execute(f"USE {DB_CONFIG['database']}")
         
         # Crear tabla de usuarios
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS Usuarios (
-                id INT PRIMARY KEY AUTO_INCREMENT,
-                nombre_usuario VARCHAR(50) NOT NULL UNIQUE,
-                correo_electronico VARCHAR(100) NOT NULL UNIQUE,
-                contraseña VARCHAR(255) NOT NULL,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nombre_usuario TEXT NOT NULL UNIQUE,
+                correo_electronico TEXT NOT NULL UNIQUE,
+                contraseña TEXT NOT NULL,
                 foto_perfil TEXT DEFAULT NULL,
                 creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
         
         # Crear tabla de configuraciones de usuario
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS Configuraciones_Usuario (
-                id INT PRIMARY KEY AUTO_INCREMENT,
-                usuario_id INT,
-                tipo_voz VARCHAR(20) DEFAULT 'mujer',
-                velocidad_lectura FLOAT DEFAULT 1.0,
-                tamaño_fuente VARCHAR(20) DEFAULT 'medium',
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                usuario_id INTEGER,
+                tipo_voz TEXT DEFAULT 'mujer',
+                velocidad_lectura REAL DEFAULT 1.0,
+                tamaño_fuente TEXT DEFAULT 'medium',
                 contraste_alto BOOLEAN DEFAULT FALSE,
                 retroalimentacion_audio BOOLEAN DEFAULT TRUE,
-                actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (usuario_id) REFERENCES Usuarios(id) ON DELETE CASCADE
             )
         """)
@@ -137,27 +116,28 @@ def init_database():
         # Crear tabla de documentos
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS Documentos (
-                id INT PRIMARY KEY AUTO_INCREMENT,
-                usuario_id INT,
-                titulo VARCHAR(100) NOT NULL,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                usuario_id INTEGER,
+                titulo TEXT NOT NULL,
                 contenido TEXT,
-                tipo_archivo VARCHAR(10),
+                tipo_archivo TEXT,
                 creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (usuario_id) REFERENCES Usuarios(id) ON DELETE CASCADE
             )
         """)
         
-        print("✅ Base de datos inicializada correctamente")
+        connection.commit()
+        print("✅ Base de datos SQLite inicializada correctamente")
         return True
         
-    except Error as e:
+    except Exception as e:
         print(f"Error inicializando base de datos: {e}")
         return False
     finally:
         if cursor:
             cursor.close()
-        if connection and connection.is_connected():
+        if connection:
             connection.close()
 
 # ===== RUTAS DE AUTENTICACIÓN =====
@@ -195,7 +175,7 @@ def register():
         cursor = connection.cursor()
         
         # Verificar si el usuario ya existe
-        cursor.execute("SELECT id FROM Usuarios WHERE correo_electronico = %s OR nombre_usuario = %s", 
+        cursor.execute("SELECT id FROM Usuarios WHERE correo_electronico = ? OR nombre_usuario = ?", 
                       (correo_electronico, nombre_usuario))
         if cursor.fetchone():
             return jsonify({'error': 'El usuario o correo ya existe'}), 409
@@ -206,7 +186,7 @@ def register():
         # Insertar nuevo usuario
         cursor.execute("""
             INSERT INTO Usuarios (nombre_usuario, correo_electronico, contraseña) 
-            VALUES (%s, %s, %s)
+            VALUES (?, ?, ?)
         """, (nombre_usuario, correo_electronico, hashed_password.decode('utf-8')))
         
         user_id = cursor.lastrowid
@@ -214,8 +194,10 @@ def register():
         # Crear configuraciones predeterminadas para el usuario
         cursor.execute("""
             INSERT INTO Configuraciones_Usuario (usuario_id, tipo_voz, velocidad_lectura, tamaño_fuente, contraste_alto, retroalimentacion_audio) 
-            VALUES (%s, %s, %s, %s, %s, %s)
+            VALUES (?, ?, ?, ?, ?, ?)
         """, (user_id, 'mujer', 1.0, 'medium', False, True))
+        
+        connection.commit()
         
         return jsonify({
             'status': 'success',
@@ -223,14 +205,12 @@ def register():
             'user_id': user_id
         }), 201
         
-    except Error as e:
-        return jsonify({'error': f'Error de base de datos: {str(e)}'}), 500
     except Exception as e:
         return jsonify({'error': f'Error interno: {str(e)}'}), 500
     finally:
         if cursor:
             cursor.close()
-        if connection and connection.is_connected():
+        if connection:
             connection.close()
 
 @app.route('/api/login', methods=['POST'])
@@ -251,51 +231,53 @@ def login():
         if not connection:
             return jsonify({'error': 'Error de conexión a la base de datos'}), 500
             
-        cursor = connection.cursor(dictionary=True)
+        cursor = connection.cursor()
         
         # Buscar usuario
-        cursor.execute("SELECT * FROM Usuarios WHERE correo_electronico = %s", (correo_electronico,))
+        cursor.execute("SELECT * FROM Usuarios WHERE correo_electronico = ?", (correo_electronico,))
         usuario = cursor.fetchone()
         
         if not usuario:
             return jsonify({'error': 'Credenciales inválidas'}), 401
         
+        # Convertir Row a dict
+        usuario_dict = dict(usuario)
+        
         # Verificar contraseña
-        if not bcrypt.checkpw(contraseña.encode('utf-8'), usuario['contraseña'].encode('utf-8')):
+        if not bcrypt.checkpw(contraseña.encode('utf-8'), usuario_dict['contraseña'].encode('utf-8')):
             return jsonify({'error': 'Credenciales inválidas'}), 401
         
         # Generar JWT token
         payload = {
-            'user_id': usuario['id'],
+            'user_id': usuario_dict['id'],
             'exp': datetime.utcnow() + timedelta(seconds=JWT_ACCESS_TOKEN_EXPIRES)
         }
         token = jwt.encode(payload, JWT_SECRET_KEY, algorithm='HS256')
         
         # Obtener configuraciones del usuario
-        cursor.execute("SELECT * FROM Configuraciones_Usuario WHERE usuario_id = %s", (usuario['id'],))
+        cursor.execute("SELECT * FROM Configuraciones_Usuario WHERE usuario_id = ?", (usuario_dict['id'],))
         configuraciones = cursor.fetchone()
+        configuraciones_dict = dict(configuraciones) if configuraciones else None
         
         return jsonify({
             'status': 'success',
             'message': 'Login exitoso',
             'token': token,
             'usuario': {
-                'id': usuario['id'],
-                'nombre_usuario': usuario['nombre_usuario'],
-                'correo_electronico': usuario['correo_electronico'],
-                'foto_perfil': usuario['foto_perfil']
+                'id': usuario_dict['id'],
+                'nombre_usuario': usuario_dict['nombre_usuario'],
+                'correo_electronico': usuario_dict['correo_electronico'],
+                'foto_perfil': usuario_dict['foto_perfil']
             },
-            'configuraciones': configuraciones
+            'configuraciones': configuraciones_dict
         }), 200
         
-    except Error as e:
-        return jsonify({'error': f'Error de base de datos: {str(e)}'}), 500
     except Exception as e:
         return jsonify({'error': f'Error interno: {str(e)}'}), 500
     finally:
         if cursor:
             cursor.close()
-        if connection and connection.is_connected():
+        if connection:
             connection.close()
 
 # ===== MIDDLEWARE DE AUTENTICACIÓN =====
@@ -343,38 +325,43 @@ def get_user_config():
         if not connection:
             return jsonify({'error': 'Error de conexión a la base de datos'}), 500
             
-        cursor = connection.cursor(dictionary=True)
+        cursor = connection.cursor()
         
         # Obtener datos del usuario
-        cursor.execute("SELECT id, nombre_usuario, correo_electronico, foto_perfil FROM Usuarios WHERE id = %s", (request.user_id,))
+        cursor.execute("SELECT id, nombre_usuario, correo_electronico, foto_perfil FROM Usuarios WHERE id = ?", (request.user_id,))
         usuario = cursor.fetchone()
+        usuario_dict = dict(usuario) if usuario else None
         
         # Obtener configuraciones
-        cursor.execute("SELECT * FROM Configuraciones_Usuario WHERE usuario_id = %s", (request.user_id,))
+        cursor.execute("SELECT * FROM Configuraciones_Usuario WHERE usuario_id = ?", (request.user_id,))
         configuraciones = cursor.fetchone()
         
         if not configuraciones:
             # Crear configuraciones predeterminadas si no existen
             cursor.execute("""
                 INSERT INTO Configuraciones_Usuario (usuario_id, tipo_voz, velocidad_lectura, tamaño_fuente, contraste_alto, retroalimentacion_audio) 
-                VALUES (%s, %s, %s, %s, %s, %s)
+                VALUES (?, ?, ?, ?, ?, ?)
             """, (request.user_id, 'mujer', 1.0, 'medium', False, True))
             
-            cursor.execute("SELECT * FROM Configuraciones_Usuario WHERE usuario_id = %s", (request.user_id,))
+            connection.commit()
+            
+            cursor.execute("SELECT * FROM Configuraciones_Usuario WHERE usuario_id = ?", (request.user_id,))
             configuraciones = cursor.fetchone()
+        
+        configuraciones_dict = dict(configuraciones) if configuraciones else None
         
         return jsonify({
             'status': 'success',
-            'usuario': usuario,
-            'configuraciones': configuraciones
+            'usuario': usuario_dict,
+            'configuraciones': configuraciones_dict
         }), 200
         
-    except Error as e:
+    except Exception as e:
         return jsonify({'error': f'Error de base de datos: {str(e)}'}), 500
     finally:
         if cursor:
             cursor.close()
-        if connection and connection.is_connected():
+        if connection:
             connection.close()
 
 @app.route('/api/user/config', methods=['PUT'])
@@ -397,41 +384,42 @@ def update_user_config():
         values = []
         
         if 'tipo_voz' in data:
-            update_fields.append("tipo_voz = %s")
+            update_fields.append("tipo_voz = ?")
             values.append(data['tipo_voz'])
         
         if 'velocidad_lectura' in data:
-            update_fields.append("velocidad_lectura = %s")
+            update_fields.append("velocidad_lectura = ?")
             values.append(float(data['velocidad_lectura']))
         
         if 'tamaño_fuente' in data:
-            update_fields.append("tamaño_fuente = %s")
+            update_fields.append("tamaño_fuente = ?")
             values.append(data['tamaño_fuente'])
         
         if 'contraste_alto' in data:
-            update_fields.append("contraste_alto = %s")
+            update_fields.append("contraste_alto = ?")
             values.append(bool(data['contraste_alto']))
         
         if 'retroalimentacion_audio' in data:
-            update_fields.append("retroalimentacion_audio = %s")
+            update_fields.append("retroalimentacion_audio = ?")
             values.append(bool(data['retroalimentacion_audio']))
         
         if update_fields:
             values.append(request.user_id)
-            query = f"UPDATE Configuraciones_Usuario SET {', '.join(update_fields)} WHERE usuario_id = %s"
+            query = f"UPDATE Configuraciones_Usuario SET {', '.join(update_fields)} WHERE usuario_id = ?"
             cursor.execute(query, values)
+            connection.commit()
         
         return jsonify({
             'status': 'success',
             'message': 'Configuración actualizada exitosamente'
         }), 200
         
-    except Error as e:
+    except Exception as e:
         return jsonify({'error': f'Error de base de datos: {str(e)}'}), 500
     finally:
         if cursor:
             cursor.close()
-        if connection and connection.is_connected():
+        if connection:
             connection.close()
 
 # ===== RUTAS DE NAVEGACIÓN =====
@@ -499,17 +487,6 @@ def leer_archivo():
 
         else:
             return jsonify({'error': 'Formato no soportado. Usa .txt, .pdf o .docx'}), 400
-
-        # Guardar documento en la base de datos
-        connection = get_db_connection()
-        if connection:
-            cursor = connection.cursor()
-            cursor.execute("""
-                INSERT INTO Documentos (usuario_id, titulo, contenido, tipo_archivo) 
-                VALUES (%s, %s, %s, %s)
-            """, (request.user_id, archivo.filename, contenido, filename.split('.')[-1]))
-            cursor.close()
-            connection.close()
 
         return jsonify({
             'status': 'success',
