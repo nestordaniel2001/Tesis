@@ -1,300 +1,622 @@
-// Verificación de variables globales
-if (typeof utterance === 'undefined') {
-    var utterance = null;
-    var isPaused = false;
-    var isReading = false;
-    var currentIndex = 0;
-    var sentences = [];
-    var progressInterval = null;
-    var totalDuration = 0;
-    var startTime = 0;
-}
+/**
+ * visual_assistant.js - Asistente visual mejorado con control de voz avanzado
+ */
+
+// Variables globales para el control de síntesis de voz
+let speechState = {
+    utterance: null,
+    isPaused: false,
+    isReading: false,
+    currentIndex: 0,
+    sentences: [],
+    progressInterval: null,
+    startTime: 0,
+    currentVoiceType: 'mujer',
+    currentSpeed: 1.0,
+    voices: []
+};
 
 const synth = window.speechSynthesis;
 
-// Función para inicializar solo una vez
+// Configuración de voces
+const VOICE_CONFIG = {
+    mujer: {
+        keywords: ['female', 'mujer', 'maría', 'carmen', 'elena', 'spanish female'],
+        fallback: 'es-ES'
+    },
+    hombre: {
+        keywords: ['male', 'hombre', 'carlos', 'miguel', 'jorge', 'spanish male'],
+        fallback: 'es-ES'
+    }
+};
+
+/**
+ * Inicialización principal del asistente visual
+ */
 function initSpeechAssistant() {
-    // Si ya está inicializado, salir
     if (window.speechAssistantInitialized) return;
     window.speechAssistantInitialized = true;
 
-    // Elementos del DOM
-    const btnExaminar = document.getElementById("btn-examinar");
-    const fileInput = document.getElementById("file-input");
-    const archivoNombreBtn = document.getElementById("archivo-nombre");
-    const readingContent = document.querySelector(".reading-content");
-    const playPauseBtn = document.getElementById("play-pause-btn");
-    const progressBar = document.getElementById("progress-bar");
-    const speedControl = document.getElementById("speed-control");
-    const speedDisplay = document.getElementById("speed-display");
-    const overlay = document.getElementById("overlay");
-    const btnCerrarMax = document.getElementById("btn-cerrar-max");
+    console.log('🎧 Inicializando Asistente Visual con control de voz mejorado...');
 
-    // Verificación de elementos esenciales
-    if (!playPauseBtn || !progressBar || !speedControl) {
-        console.error("Elementos esenciales no encontrados");
-        return;
-    }
-
-    // Evento para el botón Examinar
-    if (btnExaminar && fileInput) {
-        btnExaminar.addEventListener("click", () => fileInput.click());
-    }
-
-    // Evento para selección de archivo
-    if (fileInput) {
-        fileInput.addEventListener("change", async (event) => {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            archivoNombreBtn.textContent = file.name;
-
-            try {
-                const formData = new FormData();
-                formData.append("file", file);
-
-                const res = await fetch("/leer-archivo", {
-                    method: "POST",
-                    body: formData
-                });
-
-                const data = await res.json();
-
-                if (data.texto) {
-                    mostrarTexto(data.texto);
-                } else {
-                    alert("No se pudo leer el archivo.");
-                }
-            } catch (err) {
-                console.error("Error al leer archivo:", err);
-                alert("Hubo un error al leer el archivo.");
-            }
-        });
-    }
-
-    // Botón Limpiar
-    document.getElementById("btn-limpiar")?.addEventListener("click", () => {
-        if (readingContent) {
-            readingContent.innerHTML = "";
-            if (archivoNombreBtn) archivoNombreBtn.textContent = "Seleccionar archivo";
-            stopReading();
-        }
-    });
-
-    // Botones Zoom
-    document.getElementById("btn-zoom-in")?.addEventListener("click", () => {
-        if (readingContent) {
-            const currentSize = parseFloat(getComputedStyle(readingContent).fontSize);
-            readingContent.style.fontSize = `${currentSize + 2}px`;
-        }
-    });
-
-    document.getElementById("btn-zoom-out")?.addEventListener("click", () => {
-        if (readingContent) {
-            const currentSize = parseFloat(getComputedStyle(readingContent).fontSize);
-            if (currentSize > 10) {
-                readingContent.style.fontSize = `${currentSize - 2}px`;
-            }
-        }
-    });
-
-    // Botón Tamaño
-    document.getElementById("btn-toggle-size")?.addEventListener("click", () => {
-        if (readingContent) {
-            const isMaximized = readingContent.classList.contains("maximized");
-            readingContent.classList.toggle("maximized");
-            if (overlay) overlay.style.display = isMaximized ? "none" : "block";
-        }
-    });
-
-    // Cerrar vista maximizada
-    if (btnCerrarMax) {
-        btnCerrarMax.addEventListener("click", () => {
-            if (readingContent) {
-                readingContent.classList.remove("maximized");
-                if (overlay) overlay.style.display = "none";
-            }
-        });
-    }
-
-    if (overlay) {
-        overlay.addEventListener("click", () => {
-            if (readingContent) {
-                readingContent.classList.remove("maximized");
-                overlay.style.display = "none";
-            }
-        });
-    }
-
-    // Control de velocidad - CORREGIDO
-    speedControl.addEventListener("input", () => {
-        const newRate = parseFloat(speedControl.value);
-        
-        // Actualizar display de velocidad
-        if (speedDisplay) {
-            speedDisplay.textContent = `${newRate}x`;
-        }
-        
-        // Si hay una lectura en curso, aplicar nueva velocidad sin interrumpir
-        if (utterance && isReading && !isPaused) {
-            // Cancelar la síntesis actual
-            synth.cancel();
-            
-            // Crear nueva utterance con la velocidad actualizada
-            setTimeout(() => {
-                speakFromCurrentIndex();
-            }, 50);
-        }
-    });
-
-    // Botón Play/Pause - SOLO responde a clics en el botón
-    playPauseBtn.addEventListener("click", (e) => {
-        e.stopPropagation(); // Evitar propagación del evento
-        togglePlayPause();
-    });
-
-    // Prevenir que otros clics interfieran con la reproducción
-    document.addEventListener("click", (e) => {
-        // Solo pausar si se hace clic fuera del área de controles de audio
-        const audioControls = document.querySelector(".playback-controls");
-        const readingArea = document.querySelector(".reading-content");
-        
-        // No hacer nada si el clic fue en los controles o en el área de lectura
-        if (audioControls?.contains(e.target) || readingArea?.contains(e.target)) {
-            return;
-        }
-    });
-
+    // Cargar configuración del usuario
+    loadUserVoiceSettings();
+    
     // Cargar voces disponibles
-    loadVoices();
+    loadAvailableVoices();
+    
+    // Configurar elementos del DOM
+    setupDOMElements();
+    
+    // Configurar event listeners
+    setupEventListeners();
+    
+    console.log('✅ Asistente Visual inicializado correctamente');
 }
 
-// Cambiar el DOMContentLoaded para usar la función de inicialización
-document.addEventListener("DOMContentLoaded", function() {
-    // Limpiar cualquier inicialización previa
-    if (window.speechAssistantInitialized) {
-        synth.cancel();
-        if (progressInterval) clearInterval(progressInterval);
+/**
+ * Cargar configuración de voz del usuario
+ */
+function loadUserVoiceSettings() {
+    try {
+        const userConfig = JSON.parse(localStorage.getItem('user_config') || '{}');
+        speechState.currentVoiceType = userConfig.tipo_voz || 'mujer';
+        speechState.currentSpeed = userConfig.velocidad_lectura || 1.0;
+        
+        console.log(`Configuración cargada: Voz ${speechState.currentVoiceType}, Velocidad ${speechState.currentSpeed}x`);
+    } catch (error) {
+        console.warn('Error cargando configuración de usuario:', error);
+        speechState.currentVoiceType = 'mujer';
+        speechState.currentSpeed = 1.0;
     }
-    
-    initSpeechAssistant();
-});
+}
 
-// Función para mostrar texto en el área de lectura
+/**
+ * Cargar voces disponibles del sistema
+ */
+function loadAvailableVoices() {
+    return new Promise((resolve) => {
+        function loadVoices() {
+            speechState.voices = synth.getVoices();
+            console.log(`🔊 ${speechState.voices.length} voces disponibles:`, speechState.voices.map(v => v.name));
+            resolve(speechState.voices);
+        }
+
+        if (speechState.voices.length === 0) {
+            synth.onvoiceschanged = loadVoices;
+            loadVoices(); // Intentar cargar inmediatamente
+        } else {
+            resolve(speechState.voices);
+        }
+    });
+}
+
+/**
+ * Configurar elementos del DOM
+ */
+function setupDOMElements() {
+    const elements = {
+        btnExaminar: document.getElementById("btn-examinar"),
+        fileInput: document.getElementById("file-input"),
+        archivoNombreBtn: document.getElementById("archivo-nombre"),
+        readingContent: document.querySelector(".reading-content"),
+        playPauseBtn: document.getElementById("play-pause-btn"),
+        progressBar: document.getElementById("progress-bar"),
+        progressContainer: document.getElementById("progress-container"),
+        speedControl: document.getElementById("speed-control"),
+        speedDisplay: document.getElementById("speed-display"),
+        overlay: document.getElementById("overlay"),
+        btnCerrarMax: document.getElementById("btn-cerrar-max")
+    };
+
+    // Verificar elementos críticos
+    const requiredElements = ['playPauseBtn', 'progressBar', 'speedControl'];
+    const missingElements = requiredElements.filter(el => !elements[el]);
+    
+    if (missingElements.length > 0) {
+        console.error('❌ Elementos críticos faltantes:', missingElements);
+        return false;
+    }
+
+    // Configurar display inicial de velocidad
+    if (elements.speedControl && elements.speedDisplay) {
+        elements.speedControl.value = speechState.currentSpeed;
+        elements.speedDisplay.textContent = `${speechState.currentSpeed}x`;
+    }
+
+    return elements;
+}
+
+/**
+ * Configurar event listeners
+ */
+function setupEventListeners() {
+    const elements = setupDOMElements();
+    if (!elements) return;
+
+    // === EVENTOS DE ARCHIVOS ===
+    if (elements.btnExaminar && elements.fileInput) {
+        elements.btnExaminar.addEventListener("click", () => {
+            elements.fileInput.click();
+        });
+    }
+
+    if (elements.fileInput) {
+        elements.fileInput.addEventListener("change", handleFileSelection);
+    }
+
+    // === EVENTOS DE CONTROL ===
+    if (elements.playPauseBtn) {
+        elements.playPauseBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            togglePlayPause();
+        });
+    }
+
+    if (elements.speedControl) {
+        elements.speedControl.addEventListener("input", handleSpeedChange);
+    }
+
+    if (elements.progressContainer) {
+        elements.progressContainer.addEventListener("click", handleProgressClick);
+        elements.progressContainer.style.cursor = "pointer";
+    }
+
+    // === EVENTOS DE UI ===
+    setupUIControls(elements);
+}
+
+/**
+ * Configurar controles de UI (zoom, limpiar, etc.)
+ */
+function setupUIControls(elements) {
+    // Botón Limpiar
+    const btnLimpiar = document.getElementById("btn-limpiar");
+    if (btnLimpiar) {
+        btnLimpiar.addEventListener("click", () => {
+            if (elements.readingContent) {
+                elements.readingContent.innerHTML = "";
+                if (elements.archivoNombreBtn) {
+                    elements.archivoNombreBtn.textContent = "Seleccionar archivo";
+                }
+                stopReading();
+            }
+        });
+    }
+
+    // Botones de Zoom
+    const btnZoomIn = document.getElementById("btn-zoom-in");
+    const btnZoomOut = document.getElementById("btn-zoom-out");
+    
+    if (btnZoomIn && elements.readingContent) {
+        btnZoomIn.addEventListener("click", () => {
+            const currentSize = parseFloat(getComputedStyle(elements.readingContent).fontSize);
+            elements.readingContent.style.fontSize = `${currentSize + 2}px`;
+        });
+    }
+
+    if (btnZoomOut && elements.readingContent) {
+        btnZoomOut.addEventListener("click", () => {
+            const currentSize = parseFloat(getComputedStyle(elements.readingContent).fontSize);
+            if (currentSize > 10) {
+                elements.readingContent.style.fontSize = `${currentSize - 2}px`;
+            }
+        });
+    }
+
+    // Botón de maximizar
+    const btnToggleSize = document.getElementById("btn-toggle-size");
+    if (btnToggleSize && elements.readingContent && elements.overlay) {
+        btnToggleSize.addEventListener("click", () => {
+            const isMaximized = elements.readingContent.classList.contains("maximized");
+            elements.readingContent.classList.toggle("maximized");
+            elements.overlay.style.display = isMaximized ? "none" : "block";
+        });
+    }
+
+    // Cerrar vista maximizada
+    if (elements.btnCerrarMax && elements.readingContent && elements.overlay) {
+        elements.btnCerrarMax.addEventListener("click", () => {
+            elements.readingContent.classList.remove("maximized");
+            elements.overlay.style.display = "none";
+        });
+
+        elements.overlay.addEventListener("click", () => {
+            elements.readingContent.classList.remove("maximized");
+            elements.overlay.style.display = "none";
+        });
+    }
+}
+
+/**
+ * Manejar selección de archivo
+ */
+async function handleFileSelection(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const archivoNombreBtn = document.getElementById("archivo-nombre");
+    if (archivoNombreBtn) {
+        archivoNombreBtn.textContent = file.name;
+    }
+
+    showLoadingState(true);
+
+    try {
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const response = await fetch("/leer-archivo", {
+            method: "POST",
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (data.texto || data.status === 'success') {
+            const texto = data.texto || data.contenido || '';
+            mostrarTexto(texto);
+            showNotification('Archivo cargado correctamente', 'success');
+        } else {
+            throw new Error(data.error || 'No se pudo leer el archivo');
+        }
+    } catch (error) {
+        console.error("Error al leer archivo:", error);
+        showNotification('Error al leer el archivo: ' + error.message, 'error');
+    } finally {
+        showLoadingState(false);
+    }
+}
+
+/**
+ * Mostrar/ocultar estado de carga
+ */
+function showLoadingState(isLoading) {
+    const playPauseBtn = document.getElementById("play-pause-btn");
+    if (playPauseBtn) {
+        playPauseBtn.disabled = isLoading;
+        if (isLoading) {
+            playPauseBtn.innerHTML = "⏳";
+            playPauseBtn.title = "Cargando...";
+        } else {
+            updateButtonState();
+        }
+    }
+}
+
+/**
+ * Mostrar texto en el área de lectura
+ */
 function mostrarTexto(texto) {
     const readingContent = document.querySelector(".reading-content");
     if (!readingContent) return;
 
+    // Detener cualquier lectura en curso
     stopReading();
+    
+    // Limpiar área de lectura
     readingContent.innerHTML = "";
 
-    const parrafos = texto.split(/\r?\n/);
-    parrafos.forEach(line => {
-        if (line.trim() !== "") {
-            const p = document.createElement("p");
-            p.textContent = line;
-            readingContent.appendChild(p);
-        }
-    });
-}
-
-// Función para cargar voces
-function loadVoices() {
-    return new Promise(resolve => {
-        const voices = synth.getVoices();
-        if (voices.length) {
-            resolve(voices);
-        } else {
-            synth.onvoiceschanged = () => {
-                resolve(synth.getVoices());
-            };
-        }
-    });
-}
-
-// Función para hablar desde el índice actual - CORREGIDA
-async function speakFromCurrentIndex() {
-    if (currentIndex >= sentences.length) {
-        stopReading();
+    if (!texto || typeof texto !== 'string') {
+        readingContent.innerHTML = "<p>No se pudo cargar el contenido del archivo.</p>";
         return;
     }
 
-    const voices = await loadVoices();
-    utterance = new SpeechSynthesisUtterance();
-    utterance.voice = voices.find(voice => voice.lang === 'es-ES') || voices[0];
-    utterance.lang = 'es-ES';
-    utterance.rate = parseFloat(document.getElementById("speed-control").value);
-    utterance.text = sentences[currentIndex];
+    // Dividir en párrafos
+    const parrafos = texto.split(/\r?\n/);
+    parrafos.forEach(line => {
+        const trimmedLine = line.trim();
+        if (trimmedLine !== "") {
+            const p = document.createElement("p");
+            p.textContent = trimmedLine;
+            readingContent.appendChild(p);
+        }
+    });
 
-    // Marcar como reproduciendo
-    isReading = true;
-    isPaused = false;
+    console.log(`📄 Texto cargado: ${parrafos.length} párrafos`);
+}
 
-    utterance.onstart = () => {
-        startTime = Date.now();
+/**
+ * Manejar cambio de velocidad
+ */
+function handleSpeedChange() {
+    const speedControl = document.getElementById("speed-control");
+    const speedDisplay = document.getElementById("speed-display");
+    
+    if (!speedControl) return;
+
+    const newSpeed = parseFloat(speedControl.value);
+    speechState.currentSpeed = newSpeed;
+    
+    // Actualizar display
+    if (speedDisplay) {
+        speedDisplay.textContent = `${newSpeed}x`;
+    }
+    
+    // Si hay una lectura en curso, aplicar nueva velocidad
+    if (speechState.isReading && !speechState.isPaused) {
+        console.log(`🔄 Cambiando velocidad a ${newSpeed}x`);
+        
+        // Cancelar utterance actual y continuar con nueva velocidad
+        synth.cancel();
+        
+        // Pequeño delay para evitar conflictos
+        setTimeout(() => {
+            if (speechState.isReading) {
+                speakFromCurrentIndex();
+            }
+        }, 100);
+    }
+    
+    // Guardar configuración
+    saveSpeedPreference(newSpeed);
+}
+
+/**
+ * Guardar preferencia de velocidad
+ */
+function saveSpeedPreference(speed) {
+    try {
+        const userConfig = JSON.parse(localStorage.getItem('user_config') || '{}');
+        userConfig.velocidad_lectura = speed;
+        localStorage.setItem('user_config', JSON.stringify(userConfig));
+    } catch (error) {
+        console.warn('Error guardando preferencia de velocidad:', error);
+    }
+}
+
+/**
+ * Seleccionar la mejor voz según configuración
+ */
+function selectBestVoice() {
+    if (speechState.voices.length === 0) {
+        console.warn('⚠️ No hay voces disponibles');
+        return null;
+    }
+
+    const config = VOICE_CONFIG[speechState.currentVoiceType];
+    if (!config) {
+        console.warn('⚠️ Configuración de voz no válida:', speechState.currentVoiceType);
+        return speechState.voices.find(voice => voice.lang.includes('es')) || speechState.voices[0];
+    }
+
+    // Buscar voz que coincida con palabras clave
+    for (const keyword of config.keywords) {
+        const voice = speechState.voices.find(v => 
+            v.name.toLowerCase().includes(keyword.toLowerCase()) && 
+            v.lang.includes('es')
+        );
+        if (voice) {
+            console.log(`🎤 Voz seleccionada: ${voice.name} (${speechState.currentVoiceType})`);
+            return voice;
+        }
+    }
+
+    // Fallback: primera voz en español
+    const spanishVoice = speechState.voices.find(voice => voice.lang.includes('es'));
+    if (spanishVoice) {
+        console.log(`🎤 Voz fallback: ${spanishVoice.name}`);
+        return spanishVoice;
+    }
+
+    // Último recurso: primera voz disponible
+    console.log(`🎤 Voz por defecto: ${speechState.voices[0].name}`);
+    return speechState.voices[0];
+}
+
+/**
+ * Preparar texto para síntesis
+ */
+function prepareTextForSpeech(text) {
+    if (!text || typeof text !== 'string') return [];
+
+    // Dividir en oraciones de manera inteligente
+    let sentences = text
+        .split(/[.!?]+/)
+        .map(s => s.trim())
+        .filter(s => s.length > 0);
+
+    // Si no hay oraciones, dividir por párrafos
+    if (sentences.length === 0) {
+        sentences = text
+            .split(/\n+/)
+            .map(s => s.trim())
+            .filter(s => s.length > 0);
+    }
+
+    // Si aún no hay contenido, usar texto completo
+    if (sentences.length === 0) {
+        sentences = [text.trim()];
+    }
+
+    console.log(`📝 Texto preparado: ${sentences.length} segmentos`);
+    return sentences;
+}
+
+/**
+ * Iniciar lectura de texto
+ */
+async function speakText() {
+    try {
+        const readingContent = document.querySelector(".reading-content");
+        const text = readingContent?.innerText?.trim();
+        
+        if (!text) {
+            showNotification('No hay texto para leer', 'error');
+            return;
+        }
+
+        console.log('🎯 Iniciando lectura de texto...');
+
+        // Preparar texto
+        speechState.sentences = prepareTextForSpeech(text);
+        
+        if (speechState.sentences.length === 0) {
+            showNotification('No se pudo procesar el texto', 'error');
+            return;
+        }
+
+        // Resetear estado
+        speechState.currentIndex = 0;
+        speechState.isPaused = false;
+        speechState.isReading = true;
+
+        // Cancelar cualquier síntesis anterior
+        synth.cancel();
+        
+        // Cargar voces si es necesario
+        if (speechState.voices.length === 0) {
+            await loadAvailableVoices();
+        }
+        
+        // Iniciar lectura
+        speakFromCurrentIndex();
+        
+        showNotification('Iniciando lectura...', 'info');
+        
+    } catch (error) {
+        console.error('❌ Error en speakText:', error);
+        showNotification('Error al iniciar la lectura', 'error');
+        stopReading();
+    }
+}
+
+/**
+ * Hablar desde el índice actual
+ */
+function speakFromCurrentIndex() {
+    if (speechState.currentIndex >= speechState.sentences.length) {
+        console.log('✅ Lectura completada');
+        stopReading();
+        showNotification('Lectura completada', 'success');
+        return;
+    }
+
+    const currentText = speechState.sentences[speechState.currentIndex];
+    console.log(`🗣️ Hablando segmento ${speechState.currentIndex + 1}/${speechState.sentences.length}: "${currentText.substring(0, 50)}..."`);
+
+    // Crear nueva utterance
+    speechState.utterance = new SpeechSynthesisUtterance(currentText);
+    
+    // Configurar voz
+    const selectedVoice = selectBestVoice();
+    if (selectedVoice) {
+        speechState.utterance.voice = selectedVoice;
+    }
+    
+    speechState.utterance.lang = 'es-ES';
+    speechState.utterance.rate = speechState.currentSpeed;
+    speechState.utterance.pitch = 1.0;
+    speechState.utterance.volume = 1.0;
+
+    // Configurar eventos
+    speechState.utterance.onstart = () => {
+        speechState.startTime = Date.now();
+        speechState.isReading = true;
+        speechState.isPaused = false;
         updateButtonState();
         startProgress();
     };
 
-    utterance.onend = () => {
-        currentIndex++;
+    speechState.utterance.onend = () => {
+        speechState.currentIndex++;
         updateProgress();
         
-        // Solo continuar si no está pausado y hay más oraciones
-        if (!isPaused && currentIndex < sentences.length && isReading) {
-            setTimeout(() => speakFromCurrentIndex(), 50);
-        } else if (currentIndex >= sentences.length) {
+        // Continuar con el siguiente segmento si no está pausado
+        if (!speechState.isPaused && speechState.currentIndex < speechState.sentences.length && speechState.isReading) {
+            setTimeout(() => speakFromCurrentIndex(), 100);
+        } else if (speechState.currentIndex >= speechState.sentences.length) {
             stopReading();
         }
     };
 
-    utterance.onerror = (event) => {
-        console.error("Error en síntesis de voz:", event);
+    speechState.utterance.onerror = (event) => {
+        console.error('❌ Error en síntesis de voz:', event.error);
+        showNotification('Error en la síntesis de voz', 'error');
         stopReading();
     };
 
-    synth.speak(utterance);
+    speechState.utterance.onpause = () => {
+        console.log('⏸️ Síntesis pausada');
+        speechState.isPaused = true;
+        updateButtonState();
+        stopProgress();
+    };
+
+    speechState.utterance.onresume = () => {
+        console.log('▶️ Síntesis reanudada');
+        speechState.isPaused = false;
+        updateButtonState();
+        startProgress();
+    };
+
+    // Iniciar síntesis
+    synth.speak(speechState.utterance);
 }
 
-// Función principal para iniciar la lectura - MEJORADA
-async function speakText() {
-    try {
-        const text = document.querySelector(".reading-content")?.innerText.trim();
-        if (!text) return alert("No hay texto para leer.");
-
-        // Dividir el texto en oraciones de manera más inteligente
-        sentences = text.split(/[.!?]+\s*/).filter(s => s.trim().length > 0);
-        
-        // Si no hay oraciones, usar párrafos
-        if (sentences.length === 0) {
-            sentences = text.split(/\n+/).filter(s => s.trim().length > 0);
-        }
-        
-        // Si aún no hay contenido, usar el texto completo
-        if (sentences.length === 0) {
-            sentences = [text];
-        }
-        
-        currentIndex = 0;
-        isPaused = false;
-        isReading = true;
-
-        synth.cancel(); // Limpiar cualquier síntesis anterior
-        
-        speakFromCurrentIndex();
-    } catch (error) {
-        console.error("Error en speakText:", error);
-        alert("Error al iniciar la lectura");
+/**
+ * Alternar entre play y pausa
+ */
+function togglePlayPause() {
+    console.log(`🎮 Toggle Play/Pause - Estado actual: isReading=${speechState.isReading}, isPaused=${speechState.isPaused}, currentIndex=${speechState.currentIndex}`);
+    
+    if (speechState.isReading && !speechState.isPaused) {
+        // Está reproduciendo -> PAUSAR
+        pauseReading();
+    } else if (speechState.isPaused || (speechState.currentIndex > 0 && speechState.currentIndex < speechState.sentences.length)) {
+        // Está pausado o interrumpido -> REANUDAR
+        resumeReading();
+    } else {
+        // No está reproduciendo y está al inicio -> INICIAR
+        speakText();
     }
 }
 
-// Detener la lectura completamente - CORREGIDA
+/**
+ * Pausar lectura
+ */
+function pauseReading() {
+    console.log('⏸️ Pausando lectura...');
+    speechState.isPaused = true;
+    speechState.isReading = false;
+    
+    if (synth.speaking) {
+        synth.cancel(); // Cancel en lugar de pause para mejor control
+    }
+    
+    stopProgress();
+    updateButtonState();
+    showNotification('Lectura pausada', 'info');
+}
+
+/**
+ * Reanudar lectura
+ */
+function resumeReading() {
+    console.log('▶️ Reanudando lectura...');
+    
+    if (speechState.currentIndex < speechState.sentences.length) {
+        speechState.isPaused = false;
+        speechState.isReading = true;
+        speakFromCurrentIndex();
+        showNotification('Reanudando lectura...', 'info');
+    } else {
+        stopReading();
+    }
+}
+
+/**
+ * Detener lectura completamente
+ */
 function stopReading() {
-    isPaused = false;
-    isReading = false;
+    console.log('⏹️ Deteniendo lectura...');
+    
+    speechState.isPaused = false;
+    speechState.isReading = false;
+    speechState.currentIndex = 0;
+    
     synth.cancel();
     stopProgress();
-    currentIndex = 0;
     updateButtonState();
     
     // Resetear barra de progreso
@@ -304,91 +626,73 @@ function stopReading() {
     }
 }
 
-// Pausar la lectura - MANTIENE LA POSICIÓN
-function pauseReading() {
-    isPaused = true;
-    isReading = false;
-    synth.cancel();
-    stopProgress();
-    updateButtonState();
-    // NO resetear currentIndex para mantener la posición
-}
-
-// Reanudar la lectura desde donde se pausó
-function resumeReading() {
-    if (currentIndex < sentences.length) {
-        isPaused = false;
-        isReading = true;
-        speakFromCurrentIndex();
-    }
-}
-
-// Alternar entre play/pause - LÓGICA SIMPLIFICADA
-function togglePlayPause() {
-    console.log(`Estado actual: isReading=${isReading}, isPaused=${isPaused}, currentIndex=${currentIndex}`);
-    
-    if (isReading && !isPaused) {
-        // Está reproduciendo -> PAUSAR
-        pauseReading();
-    } else if (isPaused || (currentIndex > 0 && currentIndex < sentences.length)) {
-        // Está pausado o interrumpido -> REANUDAR
-        resumeReading();
-    } else {
-        // No está reproduciendo y está al inicio -> INICIAR
-        speakText();
-    }
-}
-
-// Actualizar estado del botón
+/**
+ * Actualizar estado del botón play/pause
+ */
 function updateButtonState() {
     const playPauseBtn = document.getElementById("play-pause-btn");
     if (!playPauseBtn) return;
     
-    if (isReading && !isPaused) {
+    if (speechState.isReading && !speechState.isPaused) {
         playPauseBtn.innerHTML = "⏸️";
-        playPauseBtn.title = "Pausar";
+        playPauseBtn.title = "Pausar lectura";
+        playPauseBtn.classList.add('playing');
     } else {
         playPauseBtn.innerHTML = "▶️";
-        playPauseBtn.title = isPaused ? "Reanudar" : "Reproducir";
+        playPauseBtn.title = speechState.isPaused ? "Reanudar lectura" : "Iniciar lectura";
+        playPauseBtn.classList.remove('playing');
     }
 }
 
-// Control de progreso - MEJORADO
+/**
+ * Iniciar actualización de progreso
+ */
 function startProgress() {
     stopProgress();
     
-    progressInterval = setInterval(() => {
+    speechState.progressInterval = setInterval(() => {
         updateProgress();
     }, 100);
 }
 
+/**
+ * Detener actualización de progreso
+ */
 function stopProgress() {
-    if (progressInterval) {
-        clearInterval(progressInterval);
-        progressInterval = null;
+    if (speechState.progressInterval) {
+        clearInterval(speechState.progressInterval);
+        speechState.progressInterval = null;
     }
 }
 
+/**
+ * Actualizar barra de progreso
+ */
 function updateProgress() {
     const progressBar = document.getElementById("progress-bar");
-    if (!progressBar || sentences.length === 0) return;
+    if (!progressBar || speechState.sentences.length === 0) return;
 
-    // Calcular progreso basado en oraciones completadas
-    let progress = (currentIndex / sentences.length) * 100;
+    // Calcular progreso basado en segmentos completados
+    let progress = (speechState.currentIndex / speechState.sentences.length) * 100;
     
-    // Si está hablando actualmente, añadir progreso parcial
-    if (synth.speaking && currentIndex < sentences.length) {
-        const partialProgress = (1 / sentences.length) * 100 * 0.5;
+    // Añadir progreso parcial si está hablando actualmente
+    if (synth.speaking && speechState.currentIndex < speechState.sentences.length) {
+        const partialProgress = (1 / speechState.sentences.length) * 100 * 0.5;
         progress += partialProgress;
     }
     
-    progress = Math.min(progress, 100);
+    progress = Math.min(Math.max(progress, 0), 100);
     progressBar.style.width = `${progress}%`;
 }
 
-// Función para manejar el clic en la barra de progreso
+/**
+ * Manejar clic en barra de progreso
+ */
 function handleProgressClick(event) {
-    if (sentences.length === 0) return;
+    if (speechState.sentences.length === 0) {
+        showNotification('No hay texto cargado', 'error');
+        return;
+    }
 
     const progressContainer = document.getElementById("progress-container");
     if (!progressContainer) return;
@@ -396,39 +700,105 @@ function handleProgressClick(event) {
     const rect = progressContainer.getBoundingClientRect();
     const clickX = event.clientX - rect.left;
     const percentage = Math.max(0, Math.min(1, clickX / rect.width));
-    const newIndex = Math.floor(percentage * sentences.length);
+    const newIndex = Math.floor(percentage * speechState.sentences.length);
 
-    if (newIndex >= 0 && newIndex < sentences.length) {
-        const wasReading = isReading && !isPaused;
+    if (newIndex >= 0 && newIndex < speechState.sentences.length) {
+        console.log(`🎯 Saltando a segmento ${newIndex + 1}/${speechState.sentences.length}`);
         
+        const wasReading = speechState.isReading && !speechState.isPaused;
+        
+        // Cancelar síntesis actual
         synth.cancel();
-        currentIndex = newIndex;
+        speechState.currentIndex = newIndex;
         updateProgress();
         
+        // Continuar reproduciendo si estaba activo
         if (wasReading) {
-            setTimeout(() => speakFromCurrentIndex(), 100);
+            setTimeout(() => {
+                if (speechState.isReading) {
+                    speakFromCurrentIndex();
+                }
+            }, 150);
         }
+        
+        showNotification(`Posición: ${newIndex + 1}/${speechState.sentences.length}`, 'info');
     }
 }
 
-// Event listeners adicionales
+/**
+ * Mostrar notificación
+ */
+function showNotification(message, type = 'info') {
+    console.log(`📢 ${type.toUpperCase()}: ${message}`);
+    
+    // Crear notificación visual
+    const notification = document.createElement('div');
+    notification.className = `speech-notification ${type}`;
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 12px 16px;
+        border-radius: 6px;
+        color: white;
+        font-size: 14px;
+        font-weight: 500;
+        z-index: 10000;
+        max-width: 300px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+        background-color: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
+    `;
+    
+    notification.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <span>${type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️'}</span>
+            <span style="flex: 1;">${message}</span>
+            <button onclick="this.parentElement.parentElement.remove()" 
+                    style="background: none; border: none; color: white; font-size: 16px; cursor: pointer; padding: 0;">×</button>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => notification.style.transform = 'translateX(0)', 100);
+    setTimeout(() => {
+        notification.style.transform = 'translateX(100%)';
+        setTimeout(() => {
+            if (notification.parentElement) {
+                notification.remove();
+            }
+        }, 300);
+    }, 3000);
+}
+
+// ===== INICIALIZACIÓN Y LIMPIEZA =====
+
 document.addEventListener("DOMContentLoaded", function() {
-    const progressContainer = document.getElementById("progress-container");
-    if (progressContainer) {
-        progressContainer.addEventListener("click", handleProgressClick);
-        progressContainer.style.cursor = "pointer";
+    // Limpiar cualquier inicialización previa
+    if (window.speechAssistantInitialized) {
+        synth.cancel();
+        if (speechState.progressInterval) {
+            clearInterval(speechState.progressInterval);
+        }
     }
     
-    // Inicializar display de velocidad
-    const speedDisplay = document.getElementById("speed-display");
-    const speedControl = document.getElementById("speed-control");
-    if (speedDisplay && speedControl) {
-        speedDisplay.textContent = `${speedControl.value}x`;
-    }
+    initSpeechAssistant();
 });
 
-// Manejar cuando la página se cierra o se recarga
+// Limpiar al cerrar la página
 window.addEventListener("beforeunload", () => {
     synth.cancel();
     stopProgress();
 });
+
+// Manejar cambios de visibilidad de la página
+document.addEventListener("visibilitychange", () => {
+    if (document.hidden && speechState.isReading) {
+        // Pausar cuando la página no es visible
+        pauseReading();
+    }
+});
+
+console.log('📚 Módulo visual_assistant.js cargado correctamente');
