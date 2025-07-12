@@ -12,12 +12,12 @@
         <!-- Barra lateral izquierda -->
         <div class="sidebar">
             <div class="logo-container">
-                <img src="/static/assets/images/logo.png" alt="Logo de Auris" class="logo">
+                <div class="logo-placeholder">🎧</div>
             </div>
             <!-- Botón hamburguesa -->
             <button id="menu-toggle" class="menu-toggle">☰ Menú</button>
             <nav class="main-nav">
-                <button id="btn-inicio" class="nav-button inicio-btn">INICIO</button>
+                <button id="btn-inicio" class="nav-button active">INICIO</button>
                 <button id="btn-modo-visual" class="nav-button">MODO VISUAL</button>
                 <button id="btn-modo-auditivo" class="nav-button">MODO AUDITIVO</button>
                 <button id="btn-biblioteca" class="nav-button">BIBLIOTECA</button>
@@ -30,53 +30,86 @@
         <main class="main-content">
             <div class="welcome-card">
                 <h1>¡Bienvenido a Auris!</h1>
-                <p>Tu asistente académico personalizado</p>
+                <p class="welcome-subtitle">Tu asistente académico personalizado</p>
+                <div id="user-welcome" class="user-welcome" style="display: none;">
+                    <p>Hola, <span id="user-name"></span> 👋</p>
+                </div>
                 
                 <div class="assistants-container">
                     <!-- Tarjeta del Asistente Visual -->
-                    <div class="assistant-card visual-assistant">
+                    <div class="assistant-card visual-assistant" id="card-visual">
                         <div class="assistant-icon">
-                            <img src="/static/assets/images/eye_icon.png" alt="Icono de ojo">
+                            <div class="icon-placeholder">👁️</div>
                         </div>
                         <div class="assistant-info">
                             <h2>Asistente Visual</h2>
-                            <p>Lectura de documentos</p>
+                            <p>Lectura de documentos con síntesis de voz</p>
+                            <button class="action-button visual-button">Abrir Modo Visual</button>
                         </div>
                     </div>
                     
                     <!-- Tarjeta del Asistente Auditivo -->
-                    <div class="assistant-card auditory-assistant">
+                    <div class="assistant-card auditory-assistant" id="card-auditivo">
                         <div class="assistant-icon">
-                            <img src="/static/assets/images/ear_icon1.png" alt="Icono de oído">
+                            <div class="icon-placeholder">🎧</div>
                         </div>
                         <div class="assistant-info">
                             <h2>Asistente Auditivo</h2>
                             <p>Transcripción en tiempo real</p>
+                            <button class="action-button auditory-button">Abrir Modo Auditivo</button>
                         </div>
                     </div>
                 </div>
                 
                 <div class="quick-access">
                     <p>Acceso Rápido</p>
-                    <span class="quick-access-subtitle">Archivos recientes y guardados</span>
+                    <span class="quick-access-subtitle">Gestiona tus preferencias y recursos</span>
                     
-                    <!-- Elemento de acceso rápido visual -->
-                    <div class="quick-access-item">
-                        <div class="quick-icon visual-icon">
-                            <img src="/static/assets/images/eye_icon.png" alt="Ícono visual pequeño">
+                    <!-- Elemento de acceso a biblioteca -->
+                    <div class="quick-access-item" id="quick-biblioteca">
+                        <div class="quick-icon">
+                            <div class="icon-placeholder">📚</div>
+                        </div>
+                        <div class="item-info">
+                            <span>Biblioteca de Documentos</span>
                         </div>
                         <div class="item-action">
-                            <button class="action-button visual-button">Abrir</button>
+                            <button class="action-button">Abrir</button>
                         </div>
                     </div>
                     
-                    <!-- Elemento de acceso rápido auditivo -->
-                    <div class="quick-access-item">
-                        <div class="quick-icon auditory-icon">
-                            <img src="/static/assets/images/ear_icon.png" alt="Ícono auditivo pequeño">
+                    <!-- Elemento de acceso a configuración -->
+                    <div class="quick-access-item" id="quick-configuracion">
+                        <div class="quick-icon">
+                            <div class="icon-placeholder">⚙️</div>
+                        </div>
+                        <div class="item-info">
+                            <span>Configuración de Usuario</span>
                         </div>
                         <div class="item-action">
-                            <button class="action-button auditory-button">Abrir</button>
+                            <button class="action-button">Configurar</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="features-highlight">
+                    <h3>✨ Nuevas Características</h3>
+                    <div class="features-list">
+                        <div class="feature-item">
+                            <span class="feature-icon">🔊</span>
+                            <span>Voces masculinas y femeninas mejoradas</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">⏯️</span>
+                            <span>Control de reproducción preciso</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">🎯</span>
+                            <span>Barra de progreso interactiva</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">⚡</span>
+                            <span>Control de velocidad en tiempo real</span>
                         </div>
                     </div>
                 </div>
@@ -84,7 +117,8 @@
         </main>
     </div>
 
-    <!-- Ejemplo de carga de JS -->
-<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/home.js') }}"></script>
 </body>
 </html>
