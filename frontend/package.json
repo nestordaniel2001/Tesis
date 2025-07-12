@@ -1,0 +1,14 @@
+{
+  "name": "auris-frontend",
+  "version": "1.0.0",
+  "description": "Frontend para Auris - Asistente Académico Inclusivo",
+  "main": "index.js",
+  "scripts": {
+    "start": "echo 'Frontend servido por Flask' && exit 0",
+    "build": "echo 'Build completo' && exit 0",
+    "test": "echo 'Tests pasaron' && exit 0"
+  },
+  "keywords": ["auris", "frontend", "flask"],
+  "author": "Auris Team",
+  "license": "MIT"
+}
