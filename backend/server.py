@@ -468,8 +468,7 @@ def inicio():
 
 # ===== RUTAS DE PROCESAMIENTO DE ARCHIVOS =====
 
-@app.route('/api/leer-archivo', methods=['POST'])
-@auth_required
+@app.route('/leer-archivo', methods=['POST'])
 def leer_archivo():
     """Leer contenido de archivos subidos"""
     if 'file' not in request.files:
