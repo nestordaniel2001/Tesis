@@ -54,6 +54,22 @@ async function verifyAuthentication() {
  */
 async function register(userData) {
     try {
+        // Validaciones del lado del cliente
+        if (!userData.nombre_usuario || userData.nombre_usuario.length < 3) {
+            showNotification('El nombre de usuario debe tener al menos 3 caracteres', 'error');
+            return { success: false, error: 'Nombre de usuario muy corto' };
+        }
+
+        if (!userData.correo_electronico || !userData.correo_electronico.includes('@')) {
+            showNotification('Por favor ingresa un correo electrónico válido', 'error');
+            return { success: false, error: 'Correo electrónico inválido' };
+        }
+
+        if (!userData.contraseña || userData.contraseña.length < 6) {
+            showNotification('La contraseña debe tener al menos 6 caracteres', 'error');
+            return { success: false, error: 'Contraseña muy corta' };
+        }
+
         const response = await fetch(`${API_BASE_URL}/api/register`, {
             method: 'POST',
             headers: {
@@ -83,6 +99,17 @@ async function register(userData) {
  */
 async function login(credentials) {
     try {
+        // Validaciones del lado del cliente
+        if (!credentials.correo_electronico || !credentials.correo_electronico.includes('@')) {
+            showNotification('Por favor ingresa un correo electrónico válido', 'error');
+            return { success: false, error: 'Correo electrónico inválido' };
+        }
+
+        if (!credentials.contraseña) {
+            showNotification('Por favor ingresa tu contraseña', 'error');
+            return { success: false, error: 'Contraseña requerida' };
+        }
+
         const response = await fetch(`${API_BASE_URL}/api/login`, {
             method: 'POST',
             headers: {
@@ -103,12 +130,12 @@ async function login(credentials) {
             localStorage.setItem('user_data', JSON.stringify(data.usuario));
             localStorage.setItem('user_config', JSON.stringify(data.configuraciones));
 
-            showNotification('¡Bienvenido de vuelta!', 'success');
+            showNotification(`¡Bienvenido de vuelta, ${data.usuario.nombre_usuario}!`, 'success');
             
             // Redirigir a la página principal
             setTimeout(() => {
                 window.location.href = '/inicio';
-            }, 1000);
+            }, 1500);
 
             return { success: true, data };
         } else {
