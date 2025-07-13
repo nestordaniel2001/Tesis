@@ -35,7 +35,7 @@ app.secret_key = os.environ.get('SECRET_KEY', 'auris-secret-key-2025')
 DB_CONFIG = {
     'host': os.environ.get('DB_HOST', 'localhost'),
     'user': os.environ.get('DB_USER', 'root'),
-    'password': os.environ.get('DB_PASSWORD', ''),
+    'password': os.environ.get('DB_PASSWORD', 'Auris2025.'),
     'database': os.environ.get('DB_NAME', 'Auris'),
     'charset': 'utf8mb4',
     'autocommit': True
