@@ -206,6 +206,7 @@ def register():
         }), 201
         
     except Exception as e:
+        print(f"Error en registro: {e}")  # Para debugging
         return jsonify({'error': f'Error interno: {str(e)}'}), 500
     finally:
         if cursor:
@@ -273,6 +274,7 @@ def login():
         }), 200
         
     except Exception as e:
+        print(f"Error en login: {e}")  # Para debugging
         return jsonify({'error': f'Error interno: {str(e)}'}), 500
     finally:
         if cursor:
