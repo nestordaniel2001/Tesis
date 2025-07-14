@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     await loadUserConfiguration();
     setupEventListeners();
+    setupNavigationListeners(); // Añadido para configurar el menú
 });
 
 /**
@@ -140,6 +141,115 @@ function setupEventListeners() {
     document.querySelector('.btn-change-photo').addEventListener('click', () => {
         showNotification('Funcionalidad de cambio de foto próximamente', 'info');
     });
+}
+
+/**
+ * Configurar event listeners para la navegación del menú lateral
+ */
+function setupNavigationListeners() {
+    // Botón hamburguesa para toggle del menú
+    const menuToggle = document.getElementById('menu-toggle');
+    const sidebar = document.querySelector('.sidebar');
+    
+    if (menuToggle && sidebar) {
+        menuToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('sidebar-collapsed');
+        });
+    }
+    
+    // Botones de navegación
+    const btnInicio = document.getElementById('btn-inicio');
+    const btnModoVisual = document.getElementById('btn-modo-visual');
+    const btnModoAuditivo = document.getElementById('btn-modo-auditivo');
+    const btnBiblioteca = document.getElementById('btn-biblioteca');
+    const btnConfiguracion = document.getElementById('btn-configuracion');
+    const btnLogin = document.getElementById('btn-login');
+    
+    // Configurar navegación
+    if (btnInicio) {
+        btnInicio.addEventListener('click', () => {
+            window.location.href = '/inicio';
+        });
+    }
+    
+    if (btnModoVisual) {
+        btnModoVisual.addEventListener('click', () => {
+            window.location.href = '/modo_visual';
+        });
+    }
+    
+    if (btnModoAuditivo) {
+        btnModoAuditivo.addEventListener('click', () => {
+            window.location.href = '/modo_auditivo';
+        });
+    }
+    
+    if (btnBiblioteca) {
+        btnBiblioteca.addEventListener('click', () => {
+            window.location.href = '/biblioteca';
+        });
+    }
+    
+    if (btnConfiguracion) {
+        btnConfiguracion.addEventListener('click', () => {
+            // Ya estamos en configuración, hacer scroll al top
+            window.scrollTo(0, 0);
+            setActiveNavButton(btnConfiguracion);
+        });
+    }
+    
+    if (btnLogin) {
+        btnLogin.addEventListener('click', async () => {
+            // Mostrar confirmación antes de cerrar sesión
+            if (hasUnsavedChanges()) {
+                const confirm = window.confirm('Tienes cambios sin guardar. ¿Estás seguro de que deseas cerrar sesión?');
+                if (!confirm) return;
+            }
+            
+            try {
+                // Cerrar sesión
+                await authAPI.logout();
+                window.location.href = '/';
+            } catch (error) {
+                console.error('Error al cerrar sesión:', error);
+                showNotification('Error al cerrar sesión', 'error');
+            }
+        });
+    }
+    
+    // Marcar el botón de configuración como activo por defecto
+    setActiveNavButton(btnConfiguracion);
+}
+
+/**
+ * Establecer el botón de navegación activo
+ */
+function setActiveNavButton(activeButton) {
+    // Remover clase active de todos los botones
+    const allNavButtons = document.querySelectorAll('.nav-button');
+    allNavButtons.forEach(button => {
+        button.classList.remove('active');
+    });
+    
+    // Añadir clase active al botón seleccionado
+    if (activeButton) {
+        activeButton.classList.add('active');
+    }
+}
+
+/**
+ * Verificar si hay cambios sin guardar
+ */
+function hasUnsavedChanges() {
+    const currentFormConfig = {
+        tipo_voz: document.getElementById('voice-type').value,
+        velocidad_lectura: parseFloat(document.getElementById('reading-speed').value),
+        tamaño_fuente: document.getElementById('font-size').value,
+        contraste_alto: document.getElementById('high-contrast').checked,
+        retroalimentacion_audio: document.getElementById('audio-feedback').checked
+    };
+    
+    return JSON.stringify(currentFormConfig) !== JSON.stringify(originalConfig);
 }
 
 /**
@@ -295,3 +405,4 @@ function showNotification(message, type = 'info') {
         }, 300);
     }, 5000);
 }
+

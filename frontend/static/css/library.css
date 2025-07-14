@@ -354,7 +354,22 @@
     border-radius: 3px;
     outline: none;
 }
-
+#btn-biblioteca.active,
+#btn-configuracion.active {
+    background-color: var(--primary-orange) !important;
+    color: var(--light-bg) !important;
+}
+#btn-biblioteca.active:hover,
+#btn-configuracion.active:hover {
+    background-color: var(--secondary-orange) !important;
+}
+@media (max-width: 768px) {
+    #btn-biblioteca.active,
+    #btn-configuracion.active {
+        background-color: var(--primary-orange) !important;
+        color: var(--light-bg) !important;
+    }
+}
 .slider-control input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
     width: 18px;

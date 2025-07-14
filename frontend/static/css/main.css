@@ -311,3 +311,51 @@ body {
         padding: 15px;
     }
 }
+.nav-button.active {
+    background-color: var(--primary-orange) !important;
+    color: var(--light-bg) !important;
+}
+
+/* Estilos específicos para cada botón cuando está activo */
+#btn-inicio.active {
+    background-color: var(--primary-orange);
+    color: var(--light-bg);
+}
+
+#btn-modo-visual.active {
+    background-color: var(--primary-orange);
+    color: var(--light-bg);
+}
+
+#btn-modo-auditivo.active {
+    background-color: var(--primary-orange);
+    color: var(--light-bg);
+}
+
+#btn-biblioteca.active {
+    background-color: var(--primary-orange);
+    color: var(--light-bg);
+}
+
+#btn-configuracion.active {
+    background-color: var(--primary-orange);
+    color: var(--light-bg);
+}
+
+/* Asegurar que el hover funcione correctamente en botones activos */
+.nav-button.active:hover {
+    background-color: var(--secondary-orange) !important;
+    transform: scale(1.05);
+}
+
+/* Versión móvil - mantener los estilos activos */
+@media (max-width: 768px) {
+    .nav-button.active {
+        background-color: var(--primary-orange) !important;
+        color: var(--light-bg) !important;
+    }
+    
+    .nav-button.active:hover {
+        background-color: var(--secondary-orange) !important;
+    }
+}
