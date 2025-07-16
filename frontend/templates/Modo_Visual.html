@@ -67,6 +67,25 @@
                 
                 <div class="reading-section">
                     <h3>Texto a leer</h3>
+                    
+                    <!-- Selector de voz en el modo visual -->
+                    <div class="voice-controls" style="margin-bottom: 15px; padding: 10px; background-color: #f9f9f9; border-radius: 8px;">
+                        <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <label for="voice-selector" style="font-weight: bold; color: #333;">Tipo de voz:</label>
+                                <select id="voice-selector" style="padding: 5px 10px; border-radius: 5px; border: 1px solid #ddd;">
+                                    <option value="mujer">👩 Voz Femenina (OpenAI)</option>
+                                    <option value="hombre">👨 Voz Masculina (OpenAI)</option>
+                                </select>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <label for="speed-selector" style="font-weight: bold; color: #333;">Velocidad:</label>
+                                <input type="range" id="speed-selector" min="0.5" max="2" step="0.1" value="1" style="width: 100px;">
+                                <span id="speed-display-visual">1.0x</span>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div class="reading-content">
                     </div>
                     <!-- Reemplaza esta sección en tu HTML -->

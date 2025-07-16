@@ -13,7 +13,8 @@ let speechState = {
     startTime: 0,
     currentVoiceType: 'mujer',
     currentSpeed: 1.0,
-    voices: []
+    voices: [],
+    currentAudio: null
 };
 
 const synth = window.speechSynthesis;
@@ -63,6 +64,23 @@ function loadUserVoiceSettings() {
         speechState.currentVoiceType = userConfig.tipo_voz || 'mujer';
         speechState.currentSpeed = userConfig.velocidad_lectura || 1.0;
         
+        // Aplicar configuración a los controles visuales
+        const voiceSelector = document.getElementById("voice-selector");
+        const speedSelector = document.getElementById("speed-selector");
+        const speedDisplayVisual = document.getElementById("speed-display-visual");
+        
+        if (voiceSelector) {
+            voiceSelector.value = speechState.currentVoiceType;
+        }
+        
+        if (speedSelector) {
+            speedSelector.value = speechState.currentSpeed;
+        }
+        
+        if (speedDisplayVisual) {
+            speedDisplayVisual.textContent = `${speechState.currentSpeed}x`;
+        }
+        
         console.log(`Configuración cargada: Voz ${speechState.currentVoiceType}, Velocidad ${speechState.currentSpeed}x`);
     } catch (error) {
         console.warn('Error cargando configuración de usuario:', error);
@@ -71,6 +89,35 @@ function loadUserVoiceSettings() {
     }
 }
 
+/**
+ * Guardar preferencia de tipo de voz
+ */
+function saveVoicePreference(voiceType) {
+    try {
+        const userConfig = JSON.parse(localStorage.getItem('user_config') || '{}');
+        userConfig.tipo_voz = voiceType;
+        localStorage.setItem('user_config', JSON.stringify(userConfig));
+        
+        // Sincronizar con el backend si hay token de autenticación
+        const token = localStorage.getItem('auth_token');
+        if (token) {
+            fetch('/api/user/config', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    tipo_voz: voiceType
+                })
+            }).catch(error => {
+                console.warn('Error sincronizando configuración de voz:', error);
+            });
+        }
+    } catch (error) {
+        console.warn('Error guardando preferencia de voz:', error);
+    }
+}
 /**
  * Cargar voces disponibles del sistema
  */
@@ -162,6 +209,36 @@ function setupEventListeners() {
         elements.progressContainer.style.cursor = "pointer";
     }
 
+    // === EVENTOS DE SELECCIÓN DE VOZ ===
+    const voiceSelector = document.getElementById("voice-selector");
+    const speedSelector = document.getElementById("speed-selector");
+    const speedDisplayVisual = document.getElementById("speed-display-visual");
+    
+    if (voiceSelector) {
+        voiceSelector.addEventListener("change", (e) => {
+            speechState.currentVoiceType = e.target.value;
+            saveVoicePreference(e.target.value);
+            showNotification(`Voz cambiada a: ${e.target.value === 'mujer' ? 'Femenina' : 'Masculina'}`, 'info');
+        });
+    }
+    
+    if (speedSelector && speedDisplayVisual) {
+        speedSelector.addEventListener("input", (e) => {
+            const newSpeed = parseFloat(e.target.value);
+            speechState.currentSpeed = newSpeed;
+            speedDisplayVisual.textContent = `${newSpeed}x`;
+            
+            // Sincronizar con el control principal
+            if (elements.speedControl) {
+                elements.speedControl.value = newSpeed;
+            }
+            if (elements.speedDisplay) {
+                elements.speedDisplay.textContent = `${newSpeed}x`;
+            }
+            
+            saveSpeedPreference(newSpeed);
+        });
+    }
     // === EVENTOS DE UI ===
     setupUIControls(elements);
 }
@@ -360,6 +437,23 @@ function saveSpeedPreference(speed) {
         const userConfig = JSON.parse(localStorage.getItem('user_config') || '{}');
         userConfig.velocidad_lectura = speed;
         localStorage.setItem('user_config', JSON.stringify(userConfig));
+        
+        // Sincronizar con el backend si hay token de autenticación
+        const token = localStorage.getItem('auth_token');
+        if (token) {
+            fetch('/api/user/config', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    velocidad_lectura: speed
+                })
+            }).catch(error => {
+                console.warn('Error sincronizando configuración de velocidad:', error);
+            });
+        }
     } catch (error) {
         console.warn('Error guardando preferencia de velocidad:', error);
     }
@@ -580,8 +674,12 @@ function pauseReading() {
     speechState.isPaused = true;
     speechState.isReading = false;
     
-    if (synth.speaking) {
-        synth.cancel(); // Cancel en lugar de pause para mejor control
+    if (speechState.currentAudio) {
+        // Pausar audio de OpenAI
+        speechState.currentAudio.pause();
+    } else if (synth.speaking) {
+        // Pausar TTS del navegador
+        synth.cancel();
     }
     
     stopProgress();
@@ -595,7 +693,15 @@ function pauseReading() {
 function resumeReading() {
     console.log('▶️ Reanudando lectura...');
     
-    if (speechState.currentIndex < speechState.sentences.length) {
+    if (speechState.currentAudio && speechState.currentAudio.paused) {
+        // Reanudar audio de OpenAI
+        speechState.isPaused = false;
+        speechState.isReading = true;
+        speechState.currentAudio.play();
+        updateButtonState();
+        showNotification('Reanudando lectura...', 'info');
+    } else if (speechState.currentIndex < speechState.sentences.length) {
+        // Reanudar TTS del navegador
         speechState.isPaused = false;
         speechState.isReading = true;
         speakFromCurrentIndex();
@@ -614,6 +720,11 @@ function stopReading() {
     speechState.isPaused = false;
     speechState.isReading = false;
     speechState.currentIndex = 0;
+    
+    if (speechState.currentAudio) {
+        speechState.currentAudio.pause();
+        speechState.currentAudio = null;
+    }
     
     synth.cancel();
     stopProgress();
@@ -784,7 +895,11 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     }
     
-    initSpeechAssistant();
+    // Pequeño delay para asegurar que el DOM esté completamente cargado
+    setTimeout(() => {
+        initSpeechAssistant();
+        loadUserVoiceSettings(); // Cargar configuración después de que los elementos estén disponibles
+    }, 100);
 });
 
 // Limpiar al cerrar la página

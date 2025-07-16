@@ -260,50 +260,48 @@ async function testVoice() {
     const speed = parseFloat(document.getElementById('reading-speed').value);
     
     const testText = voiceType === 'mujer' 
-        ? "Hola, soy la voz femenina de Auris. Así es como sueno cuando leo tus documentos."
-        : "Hola, soy la voz masculina de Auris. Así es como sueno cuando leo tus documentos.";
+        ? "Hola, soy la voz femenina de OpenAI integrada en Auris. Así es como sueno cuando leo tus documentos."
+        : "Hola, soy la voz masculina de OpenAI integrada en Auris. Así es como sueno cuando leo tus documentos.";
     
     try {
-        // Usar la API de síntesis de voz del navegador
-        const utterance = new SpeechSynthesisUtterance(testText);
-        
-        // Configurar la voz
-        const voices = speechSynthesis.getVoices();
-        let selectedVoice;
-        
-        if (voiceType === 'mujer') {
-            selectedVoice = voices.find(voice => 
-                voice.lang.includes('es') && voice.name.toLowerCase().includes('female')
-            ) || voices.find(voice => voice.lang.includes('es') && voice.name.includes('María'));
+        // Intentar usar OpenAI TTS primero
+        const response = await fetch('/api/synthesize-speech', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                text: testText,
+                voice_type: voiceType,
+                speed: speed
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            // Reproducir audio de OpenAI
+            const audio = new Audio(data.audio_url);
+            audio.play();
+            showNotification(`Reproduciendo voz de prueba con ${data.provider === 'openai' ? 'OpenAI' : 'TTS local'}...`, 'info');
         } else {
-            selectedVoice = voices.find(voice => 
-                voice.lang.includes('es') && voice.name.toLowerCase().includes('male')
-            ) || voices.find(voice => voice.lang.includes('es') && voice.name.includes('Carlos'));
+            throw new Error(data.error || 'Error en síntesis de voz');
         }
-        
-        // Si no encuentra voz específica, usar la primera en español
-        if (!selectedVoice) {
-            selectedVoice = voices.find(voice => voice.lang.includes('es'));
-        }
-        
-        if (selectedVoice) {
-            utterance.voice = selectedVoice;
-        }
-        
-        utterance.rate = speed;
-        utterance.lang = 'es-ES';
-        
-        // Cancelar cualquier síntesis anterior
-        speechSynthesis.cancel();
-        
-        // Hablar
-        speechSynthesis.speak(utterance);
-        
-        showNotification('Reproduciendo voz de prueba...', 'info');
         
     } catch (error) {
         console.error('Error al probar voz:', error);
-        showNotification('Error al reproducir la voz de prueba', 'error');
+        
+        // Fallback al TTS del navegador
+        try {
+            const utterance = new SpeechSynthesisUtterance(testText);
+            utterance.rate = speed;
+            utterance.lang = 'es-ES';
+            speechSynthesis.cancel();
+            speechSynthesis.speak(utterance);
+            showNotification('Reproduciendo voz de prueba con TTS del navegador...', 'info');
+        } catch (fallbackError) {
+            showNotification('Error al reproducir la voz de prueba', 'error');
+        }
     }
 }
 
