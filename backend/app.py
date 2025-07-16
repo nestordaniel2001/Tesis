@@ -16,6 +16,7 @@ import jwt
 import docx2txt
 from PyPDF2 import PdfReader
 from werkzeug.utils import secure_filename
+from backend.routes.tts_routes import tts_bp
 
 # Configuración de rutas
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -27,6 +28,9 @@ app = Flask(__name__,
             template_folder=template_dir,
             static_folder=static_dir)
 CORS(app)
+
+# Registrar blueprints
+app.register_blueprint(tts_bp)
 
 # Configurar clave secreta para sesiones
 app.secret_key = os.environ.get('SECRET_KEY', 'auris-secret-key-2025')
