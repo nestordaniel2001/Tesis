@@ -9,7 +9,7 @@ import sys
 import json
 import mysql.connector
 from datetime import datetime, timedelta
-from flask import Flask, request, jsonify, render_template, send_from_directory
+from flask import Flask, request, jsonify, render_template, send_from_directory, redirect
 from flask_cors import CORS
 import bcrypt
 import jwt
@@ -322,20 +322,34 @@ def verify_token(token):
 def auth_required(f):
     """Decorador para rutas que requieren autenticación"""
     def decorated_function(*args, **kwargs):
+        print(f"🔐 Verificando autenticación para ruta: {request.endpoint}")
+        
         token = request.headers.get('Authorization')
+        print(f"📝 Token en headers: {token[:20] + '...' if token else 'None'}")
+        
         if not token:
-            print("No se encontró token de autorización")
-            return jsonify({'error': 'Token requerido'}), 401
+            print("❌ No se encontró token de autorización en headers")
+            # Para rutas de páginas HTML, redirigir al login
+            if request.endpoint in ['inicio', 'modo_visual', 'modo_auditivo', 'biblioteca', 'configuracion']:
+                print("🔄 Redirigiendo a login desde ruta protegida")
+                return redirect('/')
+            else:
+                return jsonify({'error': 'Token requerido'}), 401
         
         if token.startswith('Bearer '):
             token = token[7:]
         
         user_id = verify_token(token)
         if not user_id:
-            print("Token inválido o expirado")
-            return jsonify({'error': 'Token inválido'}), 401
+            print("❌ Token inválido o expirado")
+            # Para rutas de páginas HTML, redirigir al login
+            if request.endpoint in ['inicio', 'modo_visual', 'modo_auditivo', 'biblioteca', 'configuracion']:
+                print("🔄 Redirigiendo a login por token inválido")
+                return redirect('/')
+            else:
+                return jsonify({'error': 'Token inválido'}), 401
         
-        print(f"Usuario autenticado: {user_id}")
+        print(f"✅ Usuario autenticado: {user_id}")
         request.user_id = user_id
         return f(*args, **kwargs)
     

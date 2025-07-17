@@ -132,12 +132,11 @@ async function login(credentials) {
             localStorage.setItem('user_data', JSON.stringify(data.usuario));
             localStorage.setItem('user_config', JSON.stringify(data.configuraciones));
 
+            console.log('✅ Login exitoso, token guardado:', data.token.substring(0, 20) + '...');
             showNotification(`¡Bienvenido de vuelta, ${data.usuario.nombre_usuario}!`, 'success');
             
-            // Redirigir a la página principal
-            setTimeout(() => {
-                window.location.href = '/inicio';
-            }, 1500);
+            // Redirigir inmediatamente sin delay
+            window.location.href = '/inicio';
 
             return { success: true, data };
         } else {

@@ -27,7 +27,13 @@ document.addEventListener('DOMContentLoaded', async () => {
  */
 async function loadUserInfo() {
     try {
-        const response = await authAPI.authenticatedFetch('/api/user/config');
+        const token = localStorage.getItem('auth_token');
+        const response = await fetch('/api/user/config', {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
         
         if (response.ok) {
             const data = await response.json();
@@ -43,6 +49,10 @@ async function loadUserInfo() {
             }
             
         } else {
+            if (response.status === 401) {
+                console.log('❌ Token inválido, redirigiendo al login...');
+                window.location.href = '/';
+            }
             console.warn('No se pudo cargar la información del usuario');
         }
     } catch (error) {
