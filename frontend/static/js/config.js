@@ -7,12 +7,19 @@ let originalConfig = {};
 
 // Inicializar página de configuración
 document.addEventListener('DOMContentLoaded', async () => {
+    console.log('⚙️ Cargando página de configuración...');
+    
     // Verificar autenticación
-    if (!(await authAPI.verifyAuthentication())) {
+    const isAuth = await authAPI.verifyAuthentication();
+    console.log('🔐 Estado de autenticación:', isAuth);
+    
+    if (!isAuth) {
+        console.log('❌ Usuario no autenticado, redirigiendo al login...');
         window.location.href = '/';
         return;
     }
 
+    console.log('✅ Usuario autenticado, cargando configuración...');
     await loadUserConfiguration();
     setupEventListeners();
     setupNavigationListeners(); // Añadido para configurar el menú

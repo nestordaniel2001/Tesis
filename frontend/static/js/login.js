@@ -1,14 +1,20 @@
-// Verificar si ya está autenticado
+// Limpiar cualquier token inválido al cargar la página de login
 document.addEventListener('DOMContentLoaded', async () => {
-    if (await authAPI.verifyAuthentication()) {
-        window.location.href = '/inicio';
-        return;
-    }
+    console.log('🔍 Iniciando página de login...');
     
-    initializeLoginPage();
+    // Limpiar localStorage completamente para evitar conflictos
+    localStorage.clear();
+    console.log('🧹 localStorage limpiado');
+    
+    // Esperar un momento para que se cargue auth.js
+    setTimeout(() => {
+        initializeLoginPage();
+    }, 100);
 });
 
 function initializeLoginPage() {
+    console.log('🚀 Inicializando página de login...');
+    
     // Efecto de partículas
     function createParticle() {
         const particle = document.createElement('div');
@@ -38,6 +44,11 @@ function initializeLoginPage() {
     const formTitle = document.querySelector('.logo-text');
     const formSubtitle = document.querySelector('.logo-subtitle');
 
+    if (!loginForm || !emailInput || !passwordInput || !loginBtn) {
+        console.error('❌ Elementos del formulario no encontrados');
+        return;
+    }
+
     // Crear campo de nombre de usuario para registro (oculto inicialmente)
     const usernameGroup = document.createElement('div');
     usernameGroup.className = 'form-group';
@@ -57,13 +68,15 @@ function initializeLoginPage() {
     // Crear enlace para alternar entre login y registro
     if (!toggleLink) {
         const loginLinks = document.querySelector('.login-links');
-        const newToggleLink = document.createElement('a');
-        newToggleLink.href = '#';
-        newToggleLink.className = 'login-link toggle-mode';
-        newToggleLink.textContent = '¿No tienes cuenta? Regístrate';
-        loginLinks.appendChild(newToggleLink);
-        
-        newToggleLink.addEventListener('click', toggleMode);
+        if (loginLinks) {
+            const newToggleLink = document.createElement('a');
+            newToggleLink.href = '#';
+            newToggleLink.className = 'login-link toggle-mode';
+            newToggleLink.textContent = '¿No tienes cuenta? Regístrate';
+            loginLinks.appendChild(newToggleLink);
+            
+            newToggleLink.addEventListener('click', toggleMode);
+        }
     } else {
         toggleLink.addEventListener('click', toggleMode);
     }
@@ -76,20 +89,22 @@ function initializeLoginPage() {
         
         if (isLoginMode) {
             // Modo Login
-            formTitle.textContent = 'Auris';
-            formSubtitle.textContent = 'Tu asistente académico personalizado';
+            if (formTitle) formTitle.textContent = 'Auris';
+            if (formSubtitle) formSubtitle.textContent = 'Tu asistente académico personalizado';
             loginBtn.textContent = 'Iniciar Sesión';
             usernameGroup.style.display = 'none';
             usernameInput.removeAttribute('required');
-            document.querySelector('.toggle-mode').textContent = '¿No tienes cuenta? Regístrate';
+            const toggleElement = document.querySelector('.toggle-mode');
+            if (toggleElement) toggleElement.textContent = '¿No tienes cuenta? Regístrate';
         } else {
             // Modo Registro
-            formTitle.textContent = 'Registro';
-            formSubtitle.textContent = 'Crea tu cuenta en Auris';
+            if (formTitle) formTitle.textContent = 'Registro';
+            if (formSubtitle) formSubtitle.textContent = 'Crea tu cuenta en Auris';
             loginBtn.textContent = 'Registrarse';
             usernameGroup.style.display = 'block';
             usernameInput.setAttribute('required', '');
-            document.querySelector('.toggle-mode').textContent = '¿Ya tienes cuenta? Inicia sesión';
+            const toggleElement = document.querySelector('.toggle-mode');
+            if (toggleElement) toggleElement.textContent = '¿Ya tienes cuenta? Inicia sesión';
         }
     }
 
@@ -100,6 +115,8 @@ function initializeLoginPage() {
         const email = emailInput.value.trim();
         const password = passwordInput.value;
         const username = usernameInput.value.trim();
+
+        console.log(`📝 Enviando formulario: ${isLoginMode ? 'Login' : 'Registro'}`);
 
         // Validaciones básicas
         if (!email || !password) {
@@ -122,12 +139,14 @@ function initializeLoginPage() {
             let result;
             
             if (isLoginMode) {
-                result = await authAPI.login({
+                console.log('🔐 Intentando login...');
+                result = await window.authAPI.login({
                     correo_electronico: email,
                     contraseña: password
                 });
             } else {
-                result = await authAPI.register({
+                console.log('📝 Intentando registro...');
+                result = await window.authAPI.register({
                     nombre_usuario: username,
                     correo_electronico: email,
                     contraseña: password
@@ -144,7 +163,7 @@ function initializeLoginPage() {
                 }
             }
         } catch (error) {
-            console.error('Error en formulario:', error);
+            console.error('❌ Error en formulario:', error);
             showNotification('Error de conexión', 'error');
         } finally {
             // Restaurar estado del botón
@@ -168,6 +187,8 @@ function initializeLoginPage() {
 
     // Efecto de escritura en el título
     function typeWriter(element, text, speed = 100) {
+        if (!element) return;
+        
         let i = 0;
         element.textContent = '';
         
@@ -185,46 +206,55 @@ function initializeLoginPage() {
     // Activar efecto de escritura después de un delay
     setTimeout(() => {
         const subtitle = document.querySelector('.logo-subtitle');
-        typeWriter(subtitle, 'Tu asistente académico personalizado', 50);
+        if (subtitle) {
+            typeWriter(subtitle, 'Tu asistente académico personalizado', 50);
+        }
     }, 1000);
+
+    console.log('✅ Página de login inicializada correctamente');
 }
 
-// Función de notificación (usar la del auth.js)
+// Función de notificación
 function showNotification(message, type) {
-    if (window.authAPI) {
-        // Usar la función del auth.js si está disponible
-        const notification = document.createElement('div');
-        notification.className = `notification ${type}`;
-        notification.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 15px 20px;
-            border-radius: 8px;
-            color: white;
-            font-weight: 500;
-            z-index: 10000;
-            max-width: 400px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-            transform: translateX(100%);
-            transition: transform 0.3s ease;
-            background-color: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
-        `;
-        notification.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <span>${type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️'}</span>
-                <span style="flex: 1;">${message}</span>
-                <button onclick="this.parentElement.parentElement.remove()" 
-                        style="background: none; border: none; color: white; font-size: 18px; cursor: pointer;">×</button>
-            </div>
-        `;
-        
-        document.body.appendChild(notification);
-        
-        setTimeout(() => notification.style.transform = 'translateX(0)', 100);
-        setTimeout(() => {
-            notification.style.transform = 'translateX(100%)';
-            setTimeout(() => notification.remove(), 300);
-        }, 5000);
+    console.log(`📢 Notificación ${type}: ${message}`);
+    
+    if (window.authAPI && window.authAPI.showNotification) {
+        window.authAPI.showNotification(message, type);
+        return;
     }
+    
+    // Fallback si authAPI no está disponible
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 15px 20px;
+        border-radius: 8px;
+        color: white;
+        font-weight: 500;
+        z-index: 10000;
+        max-width: 400px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+        background-color: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
+    `;
+    notification.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <span>${type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️'}</span>
+            <span style="flex: 1;">${message}</span>
+            <button onclick="this.parentElement.parentElement.remove()" 
+                    style="background: none; border: none; color: white; font-size: 18px; cursor: pointer;">×</button>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => notification.style.transform = 'translateX(0)', 100);
+    setTimeout(() => {
+        notification.style.transform = 'translateX(100%)';
+        setTimeout(() => notification.remove(), 300);
+    }, 5000);
 }

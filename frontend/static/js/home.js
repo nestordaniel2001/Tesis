@@ -4,12 +4,19 @@
 
 // Inicializar página de inicio
 document.addEventListener('DOMContentLoaded', async () => {
+    console.log('🏠 Cargando página de inicio...');
+    
     // Verificar autenticación
-    if (!(await authAPI.verifyAuthentication())) {
+    const isAuth = await authAPI.verifyAuthentication();
+    console.log('🔐 Estado de autenticación:', isAuth);
+    
+    if (!isAuth) {
+        console.log('❌ Usuario no autenticado, redirigiendo al login...');
         window.location.href = '/';
         return;
     }
 
+    console.log('✅ Usuario autenticado, cargando página...');
     await loadUserInfo();
     setupHomeEventListeners();
     setupNavigationListeners(); // Añadido para configurar el menú

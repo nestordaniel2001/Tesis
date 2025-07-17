@@ -9,13 +9,9 @@ const API_BASE_URL = window.location.origin;
 let authState = {
     token: localStorage.getItem('auth_token'),
     user: JSON.parse(localStorage.getItem('user_data') || 'null'),
-    isAuthenticated: false
+    isAuthenticated: false,
+    isInitialized: false
 };
-
-// Verificar autenticación al cargar
-document.addEventListener('DOMContentLoaded', () => {
-    verifyAuthentication();
-});
 
 /**
  * Verificar si el usuario está autenticado
@@ -39,12 +35,18 @@ async function verifyAuthentication() {
             authState.isAuthenticated = true;
             return true;
         } else {
-            logout();
+            // Token inválido, limpiar sin redirección automática
+            authState.token = null;
+            authState.user = null;
+            authState.isAuthenticated = false;
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('user_data');
+            localStorage.removeItem('user_config');
             return false;
         }
     } catch (error) {
         console.error('Error verificando autenticación:', error);
-        logout();
+        authState.isAuthenticated = false;
         return false;
     }
 }

@@ -324,6 +324,7 @@ def auth_required(f):
     def decorated_function(*args, **kwargs):
         token = request.headers.get('Authorization')
         if not token:
+            print("No se encontró token de autorización")
             return jsonify({'error': 'Token requerido'}), 401
         
         if token.startswith('Bearer '):
@@ -331,8 +332,10 @@ def auth_required(f):
         
         user_id = verify_token(token)
         if not user_id:
+            print("Token inválido o expirado")
             return jsonify({'error': 'Token inválido'}), 401
         
+        print(f"Usuario autenticado: {user_id}")
         request.user_id = user_id
         return f(*args, **kwargs)
     
