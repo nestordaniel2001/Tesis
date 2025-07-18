@@ -1,5 +1,5 @@
 /**
- * visual_assistant.js - Asistente visual mejorado con control de voz avanzado
+ * visual_assistant.js - Asistente visual mejorado con OpenAI TTS
  */
 
 // Variables globales para el control de síntesis de voz
@@ -14,22 +14,11 @@ let speechState = {
     currentVoiceType: 'mujer',
     currentSpeed: 1.0,
     voices: [],
-    currentAudio: null
+    currentAudio: null,
+    useOpenAI: true // Preferir OpenAI TTS
 };
 
 const synth = window.speechSynthesis;
-
-// Configuración de voces
-const VOICE_CONFIG = {
-    mujer: {
-        keywords: ['female', 'mujer', 'maría', 'carmen', 'elena', 'spanish female'],
-        fallback: 'es-ES'
-    },
-    hombre: {
-        keywords: ['male', 'hombre', 'carlos', 'miguel', 'jorge', 'spanish male'],
-        fallback: 'es-ES'
-    }
-};
 
 /**
  * Inicialización principal del asistente visual
@@ -38,13 +27,10 @@ function initSpeechAssistant() {
     if (window.speechAssistantInitialized) return;
     window.speechAssistantInitialized = true;
 
-    console.log('🎧 Inicializando Asistente Visual con control de voz mejorado...');
+    console.log('🎧 Inicializando Asistente Visual con OpenAI TTS...');
 
     // Cargar configuración del usuario
     loadUserVoiceSettings();
-    
-    // Cargar voces disponibles
-    loadAvailableVoices();
     
     // Configurar elementos del DOM
     setupDOMElements();
@@ -117,25 +103,6 @@ function saveVoicePreference(voiceType) {
     } catch (error) {
         console.warn('Error guardando preferencia de voz:', error);
     }
-}
-/**
- * Cargar voces disponibles del sistema
- */
-function loadAvailableVoices() {
-    return new Promise((resolve) => {
-        function loadVoices() {
-            speechState.voices = synth.getVoices();
-            console.log(`🔊 ${speechState.voices.length} voces disponibles:`, speechState.voices.map(v => v.name));
-            resolve(speechState.voices);
-        }
-
-        if (speechState.voices.length === 0) {
-            synth.onvoiceschanged = loadVoices;
-            loadVoices(); // Intentar cargar inmediatamente
-        } else {
-            resolve(speechState.voices);
-        }
-    });
 }
 
 /**
@@ -239,6 +206,7 @@ function setupEventListeners() {
             saveSpeedPreference(newSpeed);
         });
     }
+    
     // === EVENTOS DE UI ===
     setupUIControls(elements);
 }
@@ -414,15 +382,24 @@ function handleSpeedChange() {
     if (speechState.isReading && !speechState.isPaused) {
         console.log(`🔄 Cambiando velocidad a ${newSpeed}x`);
         
-        // Cancelar utterance actual y continuar con nueva velocidad
-        synth.cancel();
-        
-        // Pequeño delay para evitar conflictos
-        setTimeout(() => {
-            if (speechState.isReading) {
-                speakFromCurrentIndex();
-            }
-        }, 100);
+        // Si está usando OpenAI TTS, detener y continuar
+        if (speechState.currentAudio) {
+            speechState.currentAudio.pause();
+            speechState.currentAudio = null;
+            setTimeout(() => {
+                if (speechState.isReading) {
+                    speakFromCurrentIndex();
+                }
+            }, 100);
+        } else {
+            // Cancelar utterance actual del navegador y continuar con nueva velocidad
+            synth.cancel();
+            setTimeout(() => {
+                if (speechState.isReading) {
+                    speakFromCurrentIndex();
+                }
+            }, 100);
+        }
     }
     
     // Guardar configuración
@@ -460,45 +437,6 @@ function saveSpeedPreference(speed) {
 }
 
 /**
- * Seleccionar la mejor voz según configuración
- */
-function selectBestVoice() {
-    if (speechState.voices.length === 0) {
-        console.warn('⚠️ No hay voces disponibles');
-        return null;
-    }
-
-    const config = VOICE_CONFIG[speechState.currentVoiceType];
-    if (!config) {
-        console.warn('⚠️ Configuración de voz no válida:', speechState.currentVoiceType);
-        return speechState.voices.find(voice => voice.lang.includes('es')) || speechState.voices[0];
-    }
-
-    // Buscar voz que coincida con palabras clave
-    for (const keyword of config.keywords) {
-        const voice = speechState.voices.find(v => 
-            v.name.toLowerCase().includes(keyword.toLowerCase()) && 
-            v.lang.includes('es')
-        );
-        if (voice) {
-            console.log(`🎤 Voz seleccionada: ${voice.name} (${speechState.currentVoiceType})`);
-            return voice;
-        }
-    }
-
-    // Fallback: primera voz en español
-    const spanishVoice = speechState.voices.find(voice => voice.lang.includes('es'));
-    if (spanishVoice) {
-        console.log(`🎤 Voz fallback: ${spanishVoice.name}`);
-        return spanishVoice;
-    }
-
-    // Último recurso: primera voz disponible
-    console.log(`🎤 Voz por defecto: ${speechState.voices[0].name}`);
-    return speechState.voices[0];
-}
-
-/**
  * Preparar texto para síntesis
  */
 function prepareTextForSpeech(text) {
@@ -528,7 +466,99 @@ function prepareTextForSpeech(text) {
 }
 
 /**
- * Iniciar lectura de texto
+ * Sintetizar texto usando OpenAI TTS
+ */
+async function synthesizeWithOpenAI(text, voiceType, speed) {
+    try {
+        console.log(`🎯 Sintetizando con OpenAI: "${text.substring(0, 50)}..." (${voiceType}, ${speed}x)`);
+
+        const response = await fetch('/api/synthesize-speech', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                text: text,
+                voice_type: voiceType,
+                speed: speed
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            console.log(`✅ Síntesis exitosa con ${data.provider} (${data.voice_used || voiceType})`);
+            return {
+                success: true,
+                audioUrl: data.audio_url,
+                provider: data.provider
+            };
+        } else {
+            throw new Error(data.error || 'Error en la síntesis de voz');
+        }
+
+    } catch (error) {
+        console.error('❌ Error en síntesis OpenAI:', error);
+        throw error;
+    }
+}
+
+/**
+ * Reproducir audio sintetizado
+ */
+async function playAudioFromUrl(audioUrl) {
+    return new Promise((resolve, reject) => {
+        try {
+            // Detener audio anterior si existe
+            if (speechState.currentAudio) {
+                speechState.currentAudio.pause();
+                speechState.currentAudio = null;
+            }
+
+            speechState.currentAudio = new Audio(audioUrl);
+            
+            speechState.currentAudio.onloadeddata = () => {
+                console.log('🎵 Audio cargado, iniciando reproducción...');
+            };
+
+            speechState.currentAudio.onplay = () => {
+                console.log('▶️ Reproducción iniciada');
+                speechState.isReading = true;
+                speechState.isPaused = false;
+                updateButtonState();
+                startProgress();
+            };
+
+            speechState.currentAudio.onended = () => {
+                console.log('✅ Reproducción completada');
+                speechState.currentAudio = null;
+                resolve();
+            };
+
+            speechState.currentAudio.onerror = (error) => {
+                console.error('❌ Error reproduciendo audio:', error);
+                speechState.currentAudio = null;
+                reject(new Error('Error al reproducir audio'));
+            };
+
+            speechState.currentAudio.onpause = () => {
+                console.log('⏸️ Audio pausado');
+                speechState.isPaused = true;
+                updateButtonState();
+                stopProgress();
+            };
+
+            speechState.currentAudio.play().catch(reject);
+
+        } catch (error) {
+            console.error('❌ Error configurando reproducción:', error);
+            reject(error);
+        }
+    });
+}
+
+/**
+ * Iniciar lectura de texto con OpenAI TTS
  */
 async function speakText() {
     try {
@@ -540,7 +570,7 @@ async function speakText() {
             return;
         }
 
-        console.log('🎯 Iniciando lectura de texto...');
+        console.log('🎯 Iniciando lectura con OpenAI TTS...');
 
         // Preparar texto
         speechState.sentences = prepareTextForSpeech(text);
@@ -555,18 +585,13 @@ async function speakText() {
         speechState.isPaused = false;
         speechState.isReading = true;
 
-        // Cancelar cualquier síntesis anterior
-        synth.cancel();
-        
-        // Cargar voces si es necesario
-        if (speechState.voices.length === 0) {
-            await loadAvailableVoices();
-        }
+        // Detener cualquier síntesis anterior
+        stopReading();
         
         // Iniciar lectura
-        speakFromCurrentIndex();
+        await speakFromCurrentIndex();
         
-        showNotification('Iniciando lectura...', 'info');
+        showNotification('Iniciando lectura con OpenAI TTS...', 'info');
         
     } catch (error) {
         console.error('❌ Error en speakText:', error);
@@ -576,9 +601,9 @@ async function speakText() {
 }
 
 /**
- * Hablar desde el índice actual
+ * Hablar desde el índice actual usando OpenAI TTS
  */
-function speakFromCurrentIndex() {
+async function speakFromCurrentIndex() {
     if (speechState.currentIndex >= speechState.sentences.length) {
         console.log('✅ Lectura completada');
         stopReading();
@@ -589,63 +614,68 @@ function speakFromCurrentIndex() {
     const currentText = speechState.sentences[speechState.currentIndex];
     console.log(`🗣️ Hablando segmento ${speechState.currentIndex + 1}/${speechState.sentences.length}: "${currentText.substring(0, 50)}..."`);
 
-    // Crear nueva utterance
-    speechState.utterance = new SpeechSynthesisUtterance(currentText);
-    
-    // Configurar voz
-    const selectedVoice = selectBestVoice();
-    if (selectedVoice) {
-        speechState.utterance.voice = selectedVoice;
-    }
-    
-    speechState.utterance.lang = 'es-ES';
-    speechState.utterance.rate = speechState.currentSpeed;
-    speechState.utterance.pitch = 1.0;
-    speechState.utterance.volume = 1.0;
+    try {
+        // Intentar síntesis con OpenAI TTS
+        const result = await synthesizeWithOpenAI(
+            currentText, 
+            speechState.currentVoiceType, 
+            speechState.currentSpeed
+        );
 
-    // Configurar eventos
-    speechState.utterance.onstart = () => {
-        speechState.startTime = Date.now();
-        speechState.isReading = true;
-        speechState.isPaused = false;
-        updateButtonState();
-        startProgress();
-    };
-
-    speechState.utterance.onend = () => {
-        speechState.currentIndex++;
-        updateProgress();
-        
-        // Continuar con el siguiente segmento si no está pausado
-        if (!speechState.isPaused && speechState.currentIndex < speechState.sentences.length && speechState.isReading) {
-            setTimeout(() => speakFromCurrentIndex(), 100);
-        } else if (speechState.currentIndex >= speechState.sentences.length) {
-            stopReading();
+        if (result.success) {
+            // Reproducir audio de OpenAI
+            await playAudioFromUrl(result.audioUrl);
+            
+            // Continuar con el siguiente segmento
+            speechState.currentIndex++;
+            updateProgress();
+            
+            if (!speechState.isPaused && speechState.currentIndex < speechState.sentences.length && speechState.isReading) {
+                setTimeout(() => speakFromCurrentIndex(), 100);
+            } else if (speechState.currentIndex >= speechState.sentences.length) {
+                stopReading();
+            }
+        } else {
+            throw new Error('Error en síntesis OpenAI');
         }
-    };
 
-    speechState.utterance.onerror = (event) => {
-        console.error('❌ Error en síntesis de voz:', event.error);
-        showNotification('Error en la síntesis de voz', 'error');
-        stopReading();
-    };
+    } catch (error) {
+        console.error('❌ Error en síntesis, usando fallback del navegador:', error);
+        
+        // Fallback al TTS del navegador solo si OpenAI falla
+        speechState.utterance = new SpeechSynthesisUtterance(currentText);
+        speechState.utterance.lang = 'es-ES';
+        speechState.utterance.rate = speechState.currentSpeed;
+        speechState.utterance.pitch = 1.0;
+        speechState.utterance.volume = 1.0;
 
-    speechState.utterance.onpause = () => {
-        console.log('⏸️ Síntesis pausada');
-        speechState.isPaused = true;
-        updateButtonState();
-        stopProgress();
-    };
+        speechState.utterance.onstart = () => {
+            speechState.startTime = Date.now();
+            speechState.isReading = true;
+            speechState.isPaused = false;
+            updateButtonState();
+            startProgress();
+        };
 
-    speechState.utterance.onresume = () => {
-        console.log('▶️ Síntesis reanudada');
-        speechState.isPaused = false;
-        updateButtonState();
-        startProgress();
-    };
+        speechState.utterance.onend = () => {
+            speechState.currentIndex++;
+            updateProgress();
+            
+            if (!speechState.isPaused && speechState.currentIndex < speechState.sentences.length && speechState.isReading) {
+                setTimeout(() => speakFromCurrentIndex(), 100);
+            } else if (speechState.currentIndex >= speechState.sentences.length) {
+                stopReading();
+            }
+        };
 
-    // Iniciar síntesis
-    synth.speak(speechState.utterance);
+        speechState.utterance.onerror = (event) => {
+            console.error('❌ Error en síntesis de voz:', event.error);
+            showNotification('Error en la síntesis de voz', 'error');
+            stopReading();
+        };
+
+        synth.speak(speechState.utterance);
+    }
 }
 
 /**
@@ -701,7 +731,7 @@ function resumeReading() {
         updateButtonState();
         showNotification('Reanudando lectura...', 'info');
     } else if (speechState.currentIndex < speechState.sentences.length) {
-        // Reanudar TTS del navegador
+        // Reanudar desde el índice actual
         speechState.isPaused = false;
         speechState.isReading = true;
         speakFromCurrentIndex();
@@ -786,8 +816,8 @@ function updateProgress() {
     // Calcular progreso basado en segmentos completados
     let progress = (speechState.currentIndex / speechState.sentences.length) * 100;
     
-    // Añadir progreso parcial si está hablando actualmente
-    if (synth.speaking && speechState.currentIndex < speechState.sentences.length) {
+    // Añadir progreso parcial si está reproduciendo actualmente
+    if ((speechState.currentAudio && !speechState.currentAudio.paused) || synth.speaking) {
         const partialProgress = (1 / speechState.sentences.length) * 100 * 0.5;
         progress += partialProgress;
     }
@@ -818,8 +848,13 @@ function handleProgressClick(event) {
         
         const wasReading = speechState.isReading && !speechState.isPaused;
         
-        // Cancelar síntesis actual
+        // Detener reproducción actual
+        if (speechState.currentAudio) {
+            speechState.currentAudio.pause();
+            speechState.currentAudio = null;
+        }
         synth.cancel();
+        
         speechState.currentIndex = newIndex;
         updateProgress();
         
@@ -898,12 +933,15 @@ document.addEventListener("DOMContentLoaded", function() {
     // Pequeño delay para asegurar que el DOM esté completamente cargado
     setTimeout(() => {
         initSpeechAssistant();
-        loadUserVoiceSettings(); // Cargar configuración después de que los elementos estén disponibles
+        loadUserVoiceSettings();
     }, 100);
 });
 
 // Limpiar al cerrar la página
 window.addEventListener("beforeunload", () => {
+    if (speechState.currentAudio) {
+        speechState.currentAudio.pause();
+    }
     synth.cancel();
     stopProgress();
 });
@@ -916,4 +954,4 @@ document.addEventListener("visibilitychange", () => {
     }
 });
 
-console.log('📚 Módulo visual_assistant.js cargado correctamente');
+console.log('📚 Módulo visual_assistant.js con OpenAI TTS cargado correctamente');
