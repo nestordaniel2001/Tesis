@@ -167,6 +167,26 @@ function setupEventListeners() {
         });
     }
 
+    // Botón de detener
+    const stopBtn = document.getElementById("stop-btn");
+    if (stopBtn) {
+        stopBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            stopReading();
+            showNotification('Lectura detenida', 'info');
+        });
+    }
+
+    // Botón de reiniciar
+    const restartBtn = document.getElementById("restart-btn");
+    if (restartBtn) {
+        restartBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            stopReading();
+            speechState.currentIndex = 0;
+            speakText();
+        });
+    }
     if (elements.speedControl) {
         elements.speedControl.addEventListener("input", handleSpeedChange);
     }
