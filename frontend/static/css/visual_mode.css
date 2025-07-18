@@ -107,15 +107,23 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 15px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 10px;
+    margin-top: 15px;
 }
 
 .playback-buttons {
-    margin-right: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-right: 20px;
 }
 
 .play-btn {
-    width: 40px;
-    height: 40px;
+    width: 45px;
+    height: 45px;
     background-color: var(--dark-bg);
     border: none;
     border-radius: 50%;
@@ -123,12 +131,46 @@
     justify-content: center;
     align-items: center;
     cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 16px;
+    color: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-.pause-icon {
-    color: var(--light-bg);
-    font-style: normal;
+.play-btn:hover {
+    background-color: var(--primary-blue);
+    transform: scale(1.05);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.play-btn:active {
+    transform: scale(0.95);
+}
+
+/* Botón principal de play/pause más grande */
+.play-btn.main-control {
+    width: 55px;
+    height: 55px;
+    background: linear-gradient(135deg, var(--primary-blue), var(--secondary-blue));
+    font-size: 18px;
+    margin: 0 5px;
+}
+
+.play-btn.main-control:hover {
+    background: linear-gradient(135deg, var(--secondary-blue), var(--primary-blue));
+    transform: scale(1.08);
+}
+
+/* Botones secundarios más pequeños */
+.play-btn.secondary-control {
+    width: 40px;
+    height: 40px;
+    background-color: #6c757d;
     font-size: 14px;
+}
+
+.play-btn.secondary-control:hover {
+    background-color: var(--primary-orange);
 }
 
 .playback-slider {
@@ -148,7 +190,21 @@
 }
 
 .save-button {
-    width: 120px;
+    min-width: 120px;
+}
+
+.save-button .btn-orange {
+    padding: 12px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.save-button .btn-orange:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
 }
 
 /* Estilo específico para el botón modo visual en la barra lateral */
@@ -280,17 +336,19 @@
 /* Mejoras para la barra de progreso */
 .playback-slider {
     flex: 1;
-    height: 10px;
+    height: 8px;
     background-color: #eee;
-    border-radius: 5px;
+    border-radius: 4px;
     position: relative;
-    margin-right: 15px;
+    margin: 0 20px;
     cursor: pointer;
     transition: all 0.2s ease;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
 }
 
 .playback-slider:hover {
-    height: 12px;
+    height: 10px;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
 }
 
 .playback-fill {
@@ -299,29 +357,92 @@
     top: 0;
     height: 100%;
     width: 0%; /* Inicialmente en 0% */
-    background: linear-gradient(to right, var(--primary-blue), var(--secondary-blue));
-    border-radius: 5px;
+    background: linear-gradient(90deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
+    border-radius: 4px;
     transition: width 0.1s ease;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+/* Indicador de posición en la barra */
+.playback-fill::after {
+    content: '';
+    position: absolute;
+    right: -6px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 12px;
+    height: 12px;
+    background: white;
+    border: 2px solid var(--primary-blue);
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.playback-slider:hover .playback-fill::after {
+    opacity: 1;
 }
 
 /* Mejoras para el control de velocidad */
 .playback-info {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 5px;
-    margin-right: 15px;
-    font-size: 14px;
+    gap: 8px;
+    min-width: 120px;
+    padding: 10px;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.playback-info label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--gray-text);
+    margin-bottom: 5px;
 }
 
 #speed-control {
-    width: 80px;
-    margin: 0 5px;
+    width: 100px;
+    height: 4px;
+    -webkit-appearance: none;
+    background: #ddd;
+    border-radius: 2px;
+    outline: none;
+}
+
+#speed-control::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--primary-blue);
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+#speed-control::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--primary-blue);
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
 #speed-display {
-    min-width: 30px;
+    min-width: 40px;
     font-weight: bold;
-    color: var(--primary-orange);
+    color: var(--primary-blue);
+    font-size: 14px;
+    text-align: center;
+    background-color: #f8f9fa;
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid #e9ecef;
 }
 
 /* Mejoras para el botón de play/pause */
@@ -351,17 +472,38 @@
 /* Responsivo */
 @media (max-width: 768px) {
     .playback-controls {
-        flex-wrap: wrap;
+        flex-direction: column;
         gap: 10px;
+        padding: 10px;
+    }
+    
+    .playback-buttons {
+        order: 1;
+        justify-content: center;
+        margin-right: 0;
+        margin-bottom: 10px;
     }
     
     .playback-slider {
-        order: 3;
+        order: 2;
         width: 100%;
-        margin: 10px 0;
+        margin: 15px 0;
     }
     
     .playback-info {
-        order: 2;
+        order: 3;
+        flex-direction: row;
+        justify-content: center;
+        min-width: auto;
+        margin-bottom: 10px;
+    }
+    
+    .save-button {
+        order: 4;
+        width: 100%;
+    }
+    
+    .save-button .btn-orange {
+        width: 100%;
     }
 }
