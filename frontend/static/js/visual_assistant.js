@@ -532,6 +532,16 @@ async function playAudioFromUrl(audioUrl) {
             speechState.currentAudio.onended = () => {
                 console.log('✅ Reproducción completada');
                 speechState.currentAudio = null;
+                // Continuar con el siguiente segmento automáticamente
+                speechState.currentIndex++;
+                updateProgress();
+                
+                if (speechState.currentIndex < speechState.sentences.length && speechState.isReading && !speechState.isPaused) {
+                    setTimeout(() => speakFromCurrentIndex(), 100);
+                } else if (speechState.currentIndex >= speechState.sentences.length) {
+                    stopReading();
+                    showNotification('Lectura completada', 'success');
+                }
                 resolve();
             };
 
@@ -548,6 +558,9 @@ async function playAudioFromUrl(audioUrl) {
                 stopProgress();
             };
 
+            speechState.currentAudio.ontimeupdate = () => {
+                updateProgressDuringPlayback();
+            };
             speechState.currentAudio.play().catch(reject);
 
         } catch (error) {
@@ -625,16 +638,7 @@ async function speakFromCurrentIndex() {
         if (result.success) {
             // Reproducir audio de OpenAI
             await playAudioFromUrl(result.audioUrl);
-            
-            // Continuar con el siguiente segmento
-            speechState.currentIndex++;
-            updateProgress();
-            
-            if (!speechState.isPaused && speechState.currentIndex < speechState.sentences.length && speechState.isReading) {
-                setTimeout(() => speakFromCurrentIndex(), 100);
-            } else if (speechState.currentIndex >= speechState.sentences.length) {
-                stopReading();
-            }
+            // El progreso se maneja en playAudioFromUrl.onended
         } else {
             throw new Error('Error en síntesis OpenAI');
         }
@@ -684,14 +688,17 @@ async function speakFromCurrentIndex() {
 function togglePlayPause() {
     console.log(`🎮 Toggle Play/Pause - Estado actual: isReading=${speechState.isReading}, isPaused=${speechState.isPaused}, currentIndex=${speechState.currentIndex}`);
     
-    if (speechState.isReading && !speechState.isPaused) {
+    // Si está reproduciendo actualmente (ya sea OpenAI o navegador)
+    if ((speechState.currentAudio && !speechState.currentAudio.paused) || 
+        (synth.speaking && speechState.isReading && !speechState.isPaused)) {
         // Está reproduciendo -> PAUSAR
         pauseReading();
-    } else if (speechState.isPaused || (speechState.currentIndex > 0 && speechState.currentIndex < speechState.sentences.length)) {
+    } else if (speechState.isPaused && speechState.currentIndex < speechState.sentences.length) {
         // Está pausado o interrumpido -> REANUDAR
         resumeReading();
     } else {
-        // No está reproduciendo y está al inicio -> INICIAR
+        // No está reproduciendo -> INICIAR DESDE EL PRINCIPIO
+        speechState.currentIndex = 0;
         speakText();
     }
 }
@@ -702,14 +709,16 @@ function togglePlayPause() {
 function pauseReading() {
     console.log('⏸️ Pausando lectura...');
     speechState.isPaused = true;
-    speechState.isReading = false;
+    speechState.isReading = true; // Mantener isReading=true para poder reanudar
     
     if (speechState.currentAudio) {
         // Pausar audio de OpenAI
         speechState.currentAudio.pause();
-    } else if (synth.speaking) {
+    }
+    
+    if (synth.speaking) {
         // Pausar TTS del navegador
-        synth.cancel();
+        synth.pause();
     }
     
     stopProgress();
@@ -726,15 +735,21 @@ function resumeReading() {
     if (speechState.currentAudio && speechState.currentAudio.paused) {
         // Reanudar audio de OpenAI
         speechState.isPaused = false;
-        speechState.isReading = true;
         speechState.currentAudio.play();
         updateButtonState();
+        startProgress();
         showNotification('Reanudando lectura...', 'info');
-    } else if (speechState.currentIndex < speechState.sentences.length) {
+    } else if (speechState.isPaused && speechState.currentIndex < speechState.sentences.length) {
         // Reanudar desde el índice actual
         speechState.isPaused = false;
-        speechState.isReading = true;
         speakFromCurrentIndex();
+        showNotification('Reanudando lectura...', 'info');
+    } else if (synth.paused) {
+        // Reanudar TTS del navegador
+        speechState.isPaused = false;
+        synth.resume();
+        updateButtonState();
+        startProgress();
         showNotification('Reanudando lectura...', 'info');
     } else {
         stopReading();
@@ -774,13 +789,21 @@ function updateButtonState() {
     const playPauseBtn = document.getElementById("play-pause-btn");
     if (!playPauseBtn) return;
     
-    if (speechState.isReading && !speechState.isPaused) {
+    // Verificar si realmente está reproduciendo
+    const isActuallyPlaying = (speechState.currentAudio && !speechState.currentAudio.paused) || 
+                             (synth.speaking && !speechState.isPaused);
+    
+    if (isActuallyPlaying) {
         playPauseBtn.innerHTML = "⏸️";
         playPauseBtn.title = "Pausar lectura";
         playPauseBtn.classList.add('playing');
+    } else if (speechState.isPaused) {
+        playPauseBtn.innerHTML = "▶️";
+        playPauseBtn.title = "Reanudar lectura";
+        playPauseBtn.classList.remove('playing');
     } else {
         playPauseBtn.innerHTML = "▶️";
-        playPauseBtn.title = speechState.isPaused ? "Reanudar lectura" : "Iniciar lectura";
+        playPauseBtn.title = "Iniciar lectura";
         playPauseBtn.classList.remove('playing');
     }
 }
@@ -814,16 +837,31 @@ function updateProgress() {
     if (!progressBar || speechState.sentences.length === 0) return;
 
     // Calcular progreso basado en segmentos completados
-    let progress = (speechState.currentIndex / speechState.sentences.length) * 100;
+    const progress = (speechState.currentIndex / speechState.sentences.length) * 100;
     
-    // Añadir progreso parcial si está reproduciendo actualmente
-    if ((speechState.currentAudio && !speechState.currentAudio.paused) || synth.speaking) {
-        const partialProgress = (1 / speechState.sentences.length) * 100 * 0.5;
-        progress += partialProgress;
-    }
+    const clampedProgress = Math.min(Math.max(progress, 0), 100);
+    progressBar.style.width = `${clampedProgress}%`;
+}
+
+/**
+ * Actualizar progreso durante la reproducción de audio
+ */
+function updateProgressDuringPlayback() {
+    const progressBar = document.getElementById("progress-bar");
+    if (!progressBar || speechState.sentences.length === 0 || !speechState.currentAudio) return;
+
+    // Progreso base de segmentos completados
+    const baseProgress = (speechState.currentIndex / speechState.sentences.length) * 100;
     
-    progress = Math.min(Math.max(progress, 0), 100);
-    progressBar.style.width = `${progress}%`;
+    // Progreso del audio actual
+    const audioProgress = speechState.currentAudio.duration > 0 ? 
+        (speechState.currentAudio.currentTime / speechState.currentAudio.duration) : 0;
+    
+    // Progreso del segmento actual
+    const segmentProgress = (audioProgress / speechState.sentences.length) * 100;
+    
+    const totalProgress = Math.min(baseProgress + segmentProgress, 100);
+    progressBar.style.width = `${totalProgress}%`;
 }
 
 /**
