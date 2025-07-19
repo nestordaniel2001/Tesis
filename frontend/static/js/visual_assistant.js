@@ -572,11 +572,15 @@ async function playAudioFromUrl(audioUrl) {
             };
 
             speechState.currentAudio.onpause = () => {
-                console.log('⏸️ Audio pausado');
-                speechState.isPaused = true;
-                updateButtonState();
-                stopProgress();
-            };
+    console.log('⏸️ Audio pausado');
+    // Solo actualizar isPaused si fue pausado intencionalmente
+    // (no cuando el audio termina naturalmente)
+    if (speechState.isReading) {
+        speechState.isPaused = true;
+        updateButtonState();
+        stopProgress();
+    }
+};
 
             speechState.currentAudio.ontimeupdate = () => {
                 updateProgressDuringPlayback();
@@ -708,71 +712,95 @@ async function speakFromCurrentIndex() {
 function togglePlayPause() {
     console.log(`🎮 Toggle Play/Pause - Estado actual: isReading=${speechState.isReading}, isPaused=${speechState.isPaused}, currentIndex=${speechState.currentIndex}`);
     
-    // Si está reproduciendo actualmente (ya sea OpenAI o navegador)
-    if ((speechState.currentAudio && !speechState.currentAudio.paused) || 
-        (synth.speaking && speechState.isReading && !speechState.isPaused)) {
-        // Está reproduciendo -> PAUSAR
-        pauseReading();
-    } else if (speechState.isPaused && speechState.currentIndex < speechState.sentences.length) {
-        // Está pausado o interrumpido -> REANUDAR
-        resumeReading();
-    } else {
-        // No está reproduciendo -> INICIAR DESDE EL PRINCIPIO
-        speechState.currentIndex = 0;
-        speakText();
+    // Verificar si hay texto para leer
+    const readingContent = document.querySelector(".reading-content");
+    const text = readingContent?.innerText?.trim();
+    
+    if (!text) {
+        showNotification('No hay texto para leer', 'error');
+        return;
     }
-}
 
+    // CASO 1: Está reproduciendo actualmente -> PAUSAR
+    if (speechState.isReading && !speechState.isPaused) {
+        console.log('🎯 Caso 1: Pausando reproducción activa');
+        pauseReading();
+        return;
+    }
+    
+    // CASO 2: Está pausado -> REANUDAR
+    if (speechState.isPaused && speechState.isReading) {
+        console.log('🎯 Caso 2: Reanudando desde pausa');
+        resumeReading();
+        return;
+    }
+    
+    // CASO 3: No está reproduciendo (inicial o detenido) -> INICIAR
+    console.log('🎯 Caso 3: Iniciando nueva reproducción');
+    speechState.currentIndex = 0;
+    speakText();
+}
 /**
  * Pausar lectura
  */
 function pauseReading() {
     console.log('⏸️ Pausando lectura...');
-    speechState.isPaused = true;
-    speechState.isReading = true; // Mantener isReading=true para poder reanudar
     
-    if (speechState.currentAudio) {
+    // Cambiar estados ANTES de pausar para evitar conflictos
+    speechState.isPaused = true;
+    // NO cambiar speechState.isReading aquí, debe mantenerse true para poder reanudar
+    
+    if (speechState.currentAudio && !speechState.currentAudio.paused) {
         // Pausar audio de OpenAI
         speechState.currentAudio.pause();
+        console.log('🎵 Audio OpenAI pausado');
     }
     
     if (synth.speaking) {
         // Pausar TTS del navegador
         synth.pause();
+        console.log('🗣️ TTS navegador pausado');
     }
     
     stopProgress();
     updateButtonState();
     showNotification('Lectura pausada', 'info');
 }
-
 /**
  * Reanudar lectura
  */
 function resumeReading() {
     console.log('▶️ Reanudando lectura...');
     
+    // Cambiar estado ANTES de reanudar
+    speechState.isPaused = false;
+    
     if (speechState.currentAudio && speechState.currentAudio.paused) {
-        // Reanudar audio de OpenAI
-        speechState.isPaused = false;
-        speechState.currentAudio.play();
-        updateButtonState();
-        startProgress();
-        showNotification('Reanudando lectura...', 'info');
-    } else if (speechState.isPaused && speechState.currentIndex < speechState.sentences.length) {
-        // Reanudar desde el índice actual
-        speechState.isPaused = false;
-        speakFromCurrentIndex();
-        showNotification('Reanudando lectura...', 'info');
+        // Reanudar audio de OpenAI que estaba pausado
+        speechState.currentAudio.play()
+            .then(() => {
+                console.log('🎵 Audio OpenAI reanudado');
+                updateButtonState();
+                startProgress();
+                showNotification('Reanudando lectura...', 'info');
+            })
+            .catch(error => {
+                console.error('❌ Error reanudando audio OpenAI:', error);
+                // Si falla, continuar desde el índice actual
+                speakFromCurrentIndex();
+            });
     } else if (synth.paused) {
         // Reanudar TTS del navegador
-        speechState.isPaused = false;
         synth.resume();
+        console.log('🗣️ TTS navegador reanudado');
         updateButtonState();
         startProgress();
         showNotification('Reanudando lectura...', 'info');
     } else {
-        stopReading();
+        // Si no hay audio pausado, continuar desde el índice actual
+        console.log('🔄 Continuando desde índice actual');
+        speakFromCurrentIndex();
+        showNotification('Reanudando lectura...', 'info');
     }
 }
 
@@ -809,22 +837,30 @@ function updateButtonState() {
     const playPauseBtn = document.getElementById("play-pause-btn");
     if (!playPauseBtn) return;
     
-    // Verificar si realmente está reproduciendo
-    const isActuallyPlaying = (speechState.currentAudio && !speechState.currentAudio.paused) || 
-                             (synth.speaking && !speechState.isPaused);
+    // Determinar estado real de reproducción
+    const isOpenAIPlaying = speechState.currentAudio && !speechState.currentAudio.paused && !speechState.currentAudio.ended;
+    const isBrowserTTSPlaying = synth.speaking && !synth.paused;
+    const isActuallyPlaying = isOpenAIPlaying || isBrowserTTSPlaying;
     
-    if (isActuallyPlaying) {
+    console.log(`🔄 Actualizando botón - OpenAI: ${isOpenAIPlaying}, Browser: ${isBrowserTTSPlaying}, isPaused: ${speechState.isPaused}, isReading: ${speechState.isReading}`);
+    
+    if (speechState.isReading && !speechState.isPaused && isActuallyPlaying) {
+        // REPRODUCIENDO
         playPauseBtn.innerHTML = "⏸️";
         playPauseBtn.title = "Pausar lectura";
         playPauseBtn.classList.add('playing');
-    } else if (speechState.isPaused) {
+        playPauseBtn.classList.remove('paused');
+    } else if (speechState.isPaused && speechState.isReading) {
+        // PAUSADO
         playPauseBtn.innerHTML = "▶️";
         playPauseBtn.title = "Reanudar lectura";
         playPauseBtn.classList.remove('playing');
+        playPauseBtn.classList.add('paused');
     } else {
+        // DETENIDO O INICIAL
         playPauseBtn.innerHTML = "▶️";
         playPauseBtn.title = "Iniciar lectura";
-        playPauseBtn.classList.remove('playing');
+        playPauseBtn.classList.remove('playing', 'paused');
     }
 }
 

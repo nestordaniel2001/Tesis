@@ -176,7 +176,7 @@ def register():
         
         # Verificar si el usuario ya existe
         cursor.execute("SELECT id FROM Usuarios WHERE correo_electronico = %s OR nombre_usuario = %s", 
-                      (correo_electronico, nombre_usuario))
+                        (correo_electronico, nombre_usuario))
         if cursor.fetchone():
             return jsonify({'error': 'El usuario o correo ya existe'}), 409
         
