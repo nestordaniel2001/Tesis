@@ -38,6 +38,9 @@ function initSpeechAssistant() {
     // Configurar event listeners
     setupEventListeners();
     
+    // Configurar modal de guardar documento
+    setupSaveDocumentModal();
+    
     console.log('✅ Asistente Visual inicializado correctamente');
 }
 
@@ -229,6 +232,12 @@ function setupEventListeners() {
     
     // === EVENTOS DE UI ===
     setupUIControls(elements);
+    
+    // Configurar botón de guardar documento
+    const saveDocumentBtn = document.getElementById("save-document-btn");
+    if (saveDocumentBtn) {
+        saveDocumentBtn.addEventListener("click", openSaveDocumentModal);
+    }
 }
 
 /**
@@ -290,6 +299,175 @@ function setupUIControls(elements) {
             elements.readingContent.classList.remove("maximized");
             elements.overlay.style.display = "none";
         });
+    }
+}
+
+/**
+ * Configurar modal de guardar documento
+ */
+function setupSaveDocumentModal() {
+    const modal = document.getElementById("save-document-modal");
+    const overlay = document.getElementById("modal-overlay");
+    const closeBtn = document.getElementById("close-save-modal");
+    const cancelBtn = document.getElementById("cancel-save-btn");
+    const confirmBtn = document.getElementById("confirm-save-btn");
+    const titleInput = document.getElementById("document-title");
+    const charCounter = document.querySelector(".char-counter");
+    
+    if (!modal || !overlay || !titleInput) return;
+    
+    // Cerrar modal
+    function closeModal() {
+        modal.style.display = "none";
+        overlay.style.display = "none";
+        titleInput.value = "";
+        updateCharCounter();
+    }
+    
+    // Actualizar contador de caracteres
+    function updateCharCounter() {
+        if (charCounter && titleInput) {
+            const length = titleInput.value.length;
+            charCounter.textContent = `${length}/50 caracteres`;
+            charCounter.style.color = length > 45 ? '#ef4444' : '#6b7280';
+        }
+    }
+    
+    // Event listeners
+    if (closeBtn) closeBtn.addEventListener("click", closeModal);
+    if (cancelBtn) cancelBtn.addEventListener("click", closeModal);
+    if (overlay) overlay.addEventListener("click", closeModal);
+    
+    if (titleInput) {
+        titleInput.addEventListener("input", updateCharCounter);
+        titleInput.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                if (confirmBtn && !confirmBtn.disabled) {
+                    confirmBtn.click();
+                }
+            }
+        });
+    }
+    
+    if (confirmBtn) {
+        confirmBtn.addEventListener("click", saveDocument);
+    }
+    
+    // Cerrar con Escape
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && modal.style.display !== "none") {
+            closeModal();
+        }
+    });
+}
+
+/**
+ * Abrir modal de guardar documento
+ */
+function openSaveDocumentModal() {
+    const readingContent = document.querySelector(".reading-content");
+    const text = readingContent?.innerText?.trim();
+    
+    if (!text) {
+        showNotification('No hay contenido para guardar', 'error');
+        return;
+    }
+    
+    const modal = document.getElementById("save-document-modal");
+    const overlay = document.getElementById("modal-overlay");
+    const titleInput = document.getElementById("document-title");
+    
+    if (modal && overlay) {
+        modal.style.display = "block";
+        overlay.style.display = "block";
+        
+        // Enfocar el input del título
+        if (titleInput) {
+            setTimeout(() => titleInput.focus(), 100);
+        }
+    }
+}
+
+/**
+ * Guardar documento en la base de datos
+ */
+async function saveDocument() {
+    const titleInput = document.getElementById("document-title");
+    const confirmBtn = document.getElementById("confirm-save-btn");
+    const readingContent = document.querySelector(".reading-content");
+    
+    if (!titleInput || !confirmBtn || !readingContent) return;
+    
+    const title = titleInput.value.trim();
+    const content = readingContent.innerText?.trim();
+    
+    // Validaciones
+    if (!title) {
+        showNotification('Por favor ingresa un título', 'error');
+        titleInput.focus();
+        return;
+    }
+    
+    if (title.length > 50) {
+        showNotification('El título no puede exceder 50 caracteres', 'error');
+        titleInput.focus();
+        return;
+    }
+    
+    if (!content) {
+        showNotification('No hay contenido para guardar', 'error');
+        return;
+    }
+    
+    // Mostrar estado de carga
+    const originalText = confirmBtn.textContent;
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Guardando...';
+    
+    try {
+        const token = localStorage.getItem('auth_token');
+        if (!token) {
+            throw new Error('No hay sesión activa');
+        }
+        
+        const response = await fetch('/api/documents', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                titulo: title,
+                contenido: content
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.status === 'success') {
+            showNotification('Documento guardado exitosamente', 'success');
+            
+            // Cerrar modal
+            const modal = document.getElementById("save-document-modal");
+            const overlay = document.getElementById("modal-overlay");
+            if (modal && overlay) {
+                modal.style.display = "none";
+                overlay.style.display = "none";
+                titleInput.value = "";
+            }
+            
+        } else {
+            throw new Error(data.error || 'Error al guardar el documento');
+        }
+        
+    } catch (error) {
+        console.error('Error guardando documento:', error);
+        showNotification('Error al guardar el documento: ' + error.message, 'error');
+    } finally {
+        // Restaurar botón
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = originalText;
     }
 }
 

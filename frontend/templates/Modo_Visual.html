@@ -117,13 +117,36 @@
     
     <div class="save-button">
         <button class="btn-orange">Guardar Lectura</button>
-    </div>
+                        <button class="btn-orange" id="save-document-btn">Guardar Documento</button>
 </div>
                 </div>
             </div>
         </main>
     </div>
 
+    <!-- Modal para guardar documento -->
+    <div id="save-document-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Guardar Documento</h3>
+                <button class="modal-close" id="close-save-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="document-title">Título del documento:</label>
+                    <input type="text" id="document-title" maxlength="50" placeholder="Ingresa el título del documento">
+                    <small class="char-counter">0/50 caracteres</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" id="cancel-save-btn">Cancelar</button>
+                <button class="btn-save" id="confirm-save-btn">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overlay del modal -->
+    <div id="modal-overlay" class="modal-overlay" style="display: none;"></div>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     <script src="{{ url_for('static', filename='js/visual_assistant.js') }}"></script>
     <script src="{{ url_for('static', filename='js/openai_tts.js') }}"></script>

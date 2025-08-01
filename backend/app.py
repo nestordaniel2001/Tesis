@@ -358,6 +358,242 @@ def auth_required(f):
 
 # ===== RUTAS DE CONFIGURACIÓN DE USUARIO =====
 
+@app.route('/api/documents', methods=['POST'])
+@auth_required
+def save_document():
+    """Guardar documento del usuario"""
+    data = request.json
+    
+    if not all(k in data for k in ('titulo', 'contenido')):
+        return jsonify({'error': 'Faltan datos requeridos'}), 400
+    
+    titulo = data['titulo'].strip()
+    contenido = data['contenido'].strip()
+    
+    if len(titulo) < 1:
+        return jsonify({'error': 'El título no puede estar vacío'}), 400
+    
+    if len(titulo) > 50:
+        return jsonify({'error': 'El título no puede exceder 50 caracteres'}), 400
+    
+    connection = None
+    cursor = None
+    try:
+        connection = get_db_connection()
+        if not connection:
+            return jsonify({'error': 'Error de conexión a la base de datos'}), 500
+            
+        cursor = connection.cursor()
+        
+        # Insertar documento
+        cursor.execute("""
+            INSERT INTO Documentos (usuario_id, titulo, contenido) 
+            VALUES (%s, %s, %s)
+        """, (request.user_id, titulo, contenido))
+        
+        document_id = cursor.lastrowid
+        connection.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Documento guardado exitosamente',
+            'document_id': document_id
+        }), 201
+        
+    except mysql.connector.Error as e:
+        return jsonify({'error': f'Error de base de datos: {str(e)}'}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if connection:
+            connection.close()
+
+@app.route('/api/documents', methods=['GET'])
+@auth_required
+def get_user_documents():
+    """Obtener documentos del usuario"""
+    connection = None
+    cursor = None
+    try:
+        connection = get_db_connection()
+        if not connection:
+            return jsonify({'error': 'Error de conexión a la base de datos'}), 500
+            
+        cursor = connection.cursor(dictionary=True)
+        
+        # Obtener documentos del usuario
+        cursor.execute("""
+            SELECT id, titulo, contenido, creado_en, actualizado_en 
+            FROM Documentos 
+            WHERE usuario_id = %s 
+            ORDER BY actualizado_en DESC
+        """, (request.user_id,))
+        
+        documents = cursor.fetchall()
+        
+        # Convertir datetime a string para JSON
+        for doc in documents:
+            if doc['creado_en']:
+                doc['creado_en'] = doc['creado_en'].isoformat()
+            if doc['actualizado_en']:
+                doc['actualizado_en'] = doc['actualizado_en'].isoformat()
+        
+        return jsonify({
+            'status': 'success',
+            'documents': documents
+        }), 200
+        
+    except mysql.connector.Error as e:
+        return jsonify({'error': f'Error de base de datos: {str(e)}'}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if connection:
+            connection.close()
+
+@app.route('/api/documents/<int:document_id>', methods=['GET'])
+@auth_required
+def get_document(document_id):
+    """Obtener un documento específico"""
+    connection = None
+    cursor = None
+    try:
+        connection = get_db_connection()
+        if not connection:
+            return jsonify({'error': 'Error de conexión a la base de datos'}), 500
+            
+        cursor = connection.cursor(dictionary=True)
+        
+        # Obtener documento específico del usuario
+        cursor.execute("""
+            SELECT id, titulo, contenido, creado_en, actualizado_en 
+            FROM Documentos 
+            WHERE id = %s AND usuario_id = %s
+        """, (document_id, request.user_id))
+        
+        document = cursor.fetchone()
+        
+        if not document:
+            return jsonify({'error': 'Documento no encontrado'}), 404
+        
+        # Convertir datetime a string para JSON
+        if document['creado_en']:
+            document['creado_en'] = document['creado_en'].isoformat()
+        if document['actualizado_en']:
+            document['actualizado_en'] = document['actualizado_en'].isoformat()
+        
+        return jsonify({
+            'status': 'success',
+            'document': document
+        }), 200
+        
+    except mysql.connector.Error as e:
+        return jsonify({'error': f'Error de base de datos: {str(e)}'}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if connection:
+            connection.close()
+
+@app.route('/api/documents/<int:document_id>', methods=['PUT'])
+@auth_required
+def update_document(document_id):
+    """Actualizar documento del usuario"""
+    data = request.json
+    
+    if not data:
+        return jsonify({'error': 'No se proporcionaron datos'}), 400
+    
+    connection = None
+    cursor = None
+    try:
+        connection = get_db_connection()
+        if not connection:
+            return jsonify({'error': 'Error de conexión a la base de datos'}), 500
+            
+        cursor = connection.cursor()
+        
+        # Verificar que el documento pertenece al usuario
+        cursor.execute("SELECT id FROM Documentos WHERE id = %s AND usuario_id = %s", 
+                      (document_id, request.user_id))
+        if not cursor.fetchone():
+            return jsonify({'error': 'Documento no encontrado'}), 404
+        
+        # Construir query de actualización dinámicamente
+        update_fields = []
+        values = []
+        
+        if 'titulo' in data:
+            titulo = data['titulo'].strip()
+            if len(titulo) < 1:
+                return jsonify({'error': 'El título no puede estar vacío'}), 400
+            if len(titulo) > 50:
+                return jsonify({'error': 'El título no puede exceder 50 caracteres'}), 400
+            update_fields.append("titulo = %s")
+            values.append(titulo)
+        
+        if 'contenido' in data:
+            update_fields.append("contenido = %s")
+            values.append(data['contenido'])
+        
+        if not update_fields:
+            return jsonify({'error': 'No hay campos para actualizar'}), 400
+        
+        values.append(document_id)
+        values.append(request.user_id)
+        
+        query = f"UPDATE Documentos SET {', '.join(update_fields)} WHERE id = %s AND usuario_id = %s"
+        cursor.execute(query, values)
+        connection.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Documento actualizado exitosamente'
+        }), 200
+        
+    except mysql.connector.Error as e:
+        return jsonify({'error': f'Error de base de datos: {str(e)}'}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if connection:
+            connection.close()
+
+@app.route('/api/documents/<int:document_id>', methods=['DELETE'])
+@auth_required
+def delete_document(document_id):
+    """Eliminar documento del usuario"""
+    connection = None
+    cursor = None
+    try:
+        connection = get_db_connection()
+        if not connection:
+            return jsonify({'error': 'Error de conexión a la base de datos'}), 500
+            
+        cursor = connection.cursor()
+        
+        # Verificar que el documento pertenece al usuario y eliminarlo
+        cursor.execute("DELETE FROM Documentos WHERE id = %s AND usuario_id = %s", 
+                      (document_id, request.user_id))
+        
+        if cursor.rowcount == 0:
+            return jsonify({'error': 'Documento no encontrado'}), 404
+        
+        connection.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Documento eliminado exitosamente'
+        }), 200
+        
+    except mysql.connector.Error as e:
+        return jsonify({'error': f'Error de base de datos: {str(e)}'}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if connection:
+            connection.close()
+
 @app.route('/api/user/config', methods=['GET'])
 @auth_required
 def get_user_config():

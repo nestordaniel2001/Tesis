@@ -47,49 +47,13 @@
                 </div>
                 
                 <div class="library-items">
-                    <!-- Elemento Visual -->
-                    <div class="library-item">
-                        <div class="item-icon visual-item">
-                            <img src="/static/assets/images/document_icon.png" alt="Icono de documento">
-                        </div>
-                        <div class="item-info">
-                            <h3>Leyes del movimiento</h3>
-                            <p>15/05/2025 · Documento</p>
-                        </div>
-                        <div class="item-actions">
-                            <button class="btn-item-action">Abrir</button>
-                            <button class="btn-item-action">Eliminar</button>
-                        </div>
+                    <!-- Los documentos se cargarán dinámicamente aquí -->
+                    <div id="loading-documents" class="loading-message">
+                        Cargando documentos...
                     </div>
-                    
-                    <!-- Elemento Auditivo -->
-                    <div class="library-item">
-                        <div class="item-icon auditory-item">
-                            <img src="/static/assets/images/audio_icon.png" alt="Icono de audio">
-                        </div>
-                        <div class="item-info">
-                            <h3>Clase de Fotosíntesis</h3>
-                            <p>14/05/2025 · Transcripción</p>
-                        </div>
-                        <div class="item-actions">
-                            <button class="btn-item-action">Abrir</button>
-                            <button class="btn-item-action">Eliminar</button>
-                        </div>
-                    </div>
-                    
-                    <!-- Más elementos de la biblioteca -->
-                    <div class="library-item">
-                        <div class="item-icon visual-item">
-                            <img src="/static/assets/images/document_icon.png" alt="Icono de documento">
-                        </div>
-                        <div class="item-info">
-                            <h3>Historia de América</h3>
-                            <p>10/05/2025 · Documento</p>
-                        </div>
-                        <div class="item-actions">
-                            <button class="btn-item-action">Abrir</button>
-                            <button class="btn-item-action">Eliminar</button>
-                        </div>
+                    <div id="no-documents" class="no-documents-message" style="display: none;">
+                        <p>No tienes documentos guardados aún.</p>
+                        <p>Ve al <a href="/modo_visual">Modo Visual</a> para crear y guardar documentos.</p>
                     </div>
                 </div>
                 
@@ -106,6 +70,59 @@
         </main>
     </div>
 
+    <!-- Modal para ver documento -->
+    <div id="view-document-modal" class="document-modal" style="display: none;">
+        <div class="document-modal-content">
+            <div class="document-modal-header">
+                <h3 id="view-document-title">Título del documento</h3>
+                <button class="modal-close" id="close-view-modal">&times;</button>
+            </div>
+            <div class="document-modal-body">
+                <div class="document-content" id="view-document-content">
+                    <!-- Contenido del documento -->
+                </div>
+                <div class="document-controls">
+                    <button class="btn-play-document" id="play-document-btn">▶️ Reproducir</button>
+                    <div class="document-progress">
+                        <div class="progress-bar" id="document-progress-bar"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para editar documento -->
+    <div id="edit-document-modal" class="document-modal" style="display: none;">
+        <div class="document-modal-content">
+            <div class="document-modal-header">
+                <h3>Editar Documento</h3>
+                <button class="modal-close" id="close-edit-modal">&times;</button>
+            </div>
+            <div class="document-modal-body">
+                <div class="form-group">
+                    <label for="edit-document-title">Título:</label>
+                    <input type="text" id="edit-document-title" maxlength="50">
+                    <small class="char-counter" id="edit-char-counter">0/50 caracteres</small>
+                </div>
+                <div class="form-group">
+                    <label for="edit-document-content">Contenido:</label>
+                    <textarea id="edit-document-content" rows="10"></textarea>
+                </div>
+                <div class="edit-actions">
+                    <button class="btn-delete" id="delete-document-btn">🗑️ Eliminar</button>
+                    <div class="edit-buttons">
+                        <button class="btn-cancel" id="cancel-edit-btn">Cancelar</button>
+                        <button class="btn-save" id="save-edit-btn">Guardar Cambios</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overlay para modales -->
+    <div id="document-modal-overlay" class="modal-overlay" style="display: none;"></div>
+    <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/library.js') }}"></script>
 </body>
 </html>

@@ -565,3 +565,261 @@ input:checked + .slider:before {
         justify-content: space-between;
     }
 }
+
+/* === ESTILOS PARA MENSAJES DE CARGA Y VACÍO === */
+.loading-message,
+.no-documents-message {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--gray-text);
+}
+
+.no-documents-message p {
+    margin-bottom: 10px;
+}
+
+.no-documents-message a {
+    color: var(--primary-blue);
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.no-documents-message a:hover {
+    text-decoration: underline;
+}
+
+/* === ESTILOS PARA MODALES DE DOCUMENTOS === */
+.document-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    z-index: 1001;
+    width: 90%;
+    max-width: 800px;
+    max-height: 90vh;
+    overflow: hidden;
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+.document-modal-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.document-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid #e5e7eb;
+    background-color: #f9fafb;
+}
+
+.document-modal-header h3 {
+    margin: 0;
+    color: var(--primary-blue);
+    font-size: 1.25rem;
+}
+
+.document-modal-body {
+    flex: 1;
+    padding: 24px;
+    overflow-y: auto;
+}
+
+/* Estilos para el modal de visualización */
+.document-content {
+    background-color: #f9f9f9;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    max-height: 400px;
+    overflow-y: auto;
+    line-height: 1.6;
+    font-size: 16px;
+}
+
+.document-controls {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+}
+
+.btn-play-document {
+    padding: 10px 20px;
+    background-color: var(--primary-blue);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.btn-play-document:hover {
+    background-color: var(--secondary-blue);
+}
+
+.document-progress {
+    flex: 1;
+    height: 6px;
+    background-color: #e5e7eb;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--primary-blue), var(--secondary-blue));
+    transition: width 0.1s ease;
+}
+
+/* Estilos para el modal de edición */
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #374151;
+}
+
+.form-group input[type="text"],
+.form-group textarea {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 16px;
+    font-family: inherit;
+    transition: border-color 0.2s ease;
+    outline: none;
+    resize: vertical;
+}
+
+.form-group input[type="text"]:focus,
+.form-group textarea:focus {
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 3px rgba(0, 70, 181, 0.1);
+}
+
+.edit-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.btn-delete {
+    padding: 10px 20px;
+    background-color: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.btn-delete:hover {
+    background-color: #dc2626;
+}
+
+.edit-buttons {
+    display: flex;
+    gap: 12px;
+}
+
+.edit-buttons .btn-cancel {
+    padding: 10px 20px;
+    border: 2px solid #d1d5db;
+    background: white;
+    color: #374151;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.edit-buttons .btn-cancel:hover {
+    border-color: #9ca3af;
+    background-color: #f9fafb;
+}
+
+.edit-buttons .btn-save {
+    padding: 10px 20px;
+    border: none;
+    background: var(--primary-blue);
+    color: white;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.edit-buttons .btn-save:hover {
+    background: var(--secondary-blue);
+}
+
+.edit-buttons .btn-save:disabled {
+    background: #d1d5db;
+    cursor: not-allowed;
+}
+
+/* Animaciones */
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -60%);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%);
+    }
+}
+
+/* Responsive para modales de documentos */
+@media (max-width: 768px) {
+    .document-modal {
+        width: 95%;
+        max-height: 95vh;
+    }
+    
+    .document-modal-header,
+    .document-modal-body {
+        padding: 16px;
+    }
+    
+    .document-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .edit-actions {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .edit-buttons {
+        width: 100%;
+    }
+    
+    .edit-buttons .btn-cancel,
+    .edit-buttons .btn-save {
+        flex: 1;
+    }
+}
