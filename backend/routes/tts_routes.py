@@ -3,21 +3,22 @@ Rutas para Text-to-Speech con OpenAI
 """
 
 from flask import Blueprint, request, jsonify
-from backend.services.openai_tts import OpenAITTSService
+from backend.services.edge_tts import EdgeTTSService
 from backend.models.text_to_speech import TextToSpeech
+import asyncio
 
 # Crear blueprint para las rutas TTS
 tts_bp = Blueprint('tts', __name__)
 
 # Inicializar servicios
-openai_tts = OpenAITTSService()
+edge_tts = EdgeTTSService()
 fallback_tts = TextToSpeech()
 
 @tts_bp.route('/api/synthesize-speech', methods=['POST'])
 def synthesize_speech():
     """
     Endpoint para sintetizar texto a voz
-    Usa OpenAI TTS como primera opción, fallback a pyttsx3/gTTS
+    Usa Edge TTS como primera opción, fallback a pyttsx3/gTTS
     """
     try:
         data = request.json
@@ -38,18 +39,26 @@ def synthesize_speech():
                 'error': 'El texto no puede estar vacío'
             }), 400
         
-        # Intentar con OpenAI TTS primero
-        if openai_tts.is_available():
-            print(f"🎤 Usando OpenAI TTS - Voz: {voice_type}, Velocidad: {speed}x")
-            result = openai_tts.synthesize_speech(text, voice_type, speed)
+        # Intentar con Edge TTS primero
+        if edge_tts.is_available():
+            print(f"🎤 Usando Edge TTS - Voz: {voice_type}, Velocidad: {speed}x")
+            
+            # Ejecutar función async en el contexto del hilo actual
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                result = loop.run_until_complete(edge_tts.synthesize_speech(text, voice_type, speed))
+            finally:
+                loop.close()
             
             if result['success']:
                 return jsonify({
                     'success': True,
                     'audio_url': result['audio_url'],
-                    'provider': 'openai',
+                    'file_path': result.get('file_path'),
+                    'provider': 'edge-tts',
                     'voice_used': result['voice_used'],
-                    'model': result['model']
+                    'voice_name': result['voice_used']
                 })
             elif not result.get('fallback', False):
                 # Error sin fallback
@@ -86,7 +95,7 @@ def get_tts_info():
     """Obtener información sobre los servicios TTS disponibles"""
     try:
         info = {
-            'openai_available': openai_tts.is_available(),
+            'edge_tts_available': edge_tts.is_available(),
             'local_available': True,
             'voice_options': {
                 'mujer': 'Voz femenina',
@@ -99,8 +108,8 @@ def get_tts_info():
             }
         }
         
-        if openai_tts.is_available():
-            info['openai_info'] = openai_tts.get_voice_info()
+        if edge_tts.is_available():
+            info['edge_tts_info'] = edge_tts.get_voice_info()
         
         return jsonify({
             'success': True,
@@ -118,7 +127,7 @@ def cleanup_audio_files():
     """Limpiar archivos de audio antiguos"""
     try:
         max_age_hours = request.json.get('max_age_hours', 24) if request.json else 24
-        openai_tts.cleanup_old_files(max_age_hours)
+        edge_tts.cleanup_old_files(max_age_hours)
         
         return jsonify({
             'success': True,

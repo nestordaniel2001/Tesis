@@ -290,7 +290,7 @@ async function testVoice() {
             // Reproducir audio de OpenAI
             const audio = new Audio(data.audio_url);
             audio.play();
-            showNotification(`Reproduciendo voz de prueba con ${data.provider === 'openai' ? 'OpenAI' : 'TTS local'}...`, 'info');
+            showNotification(`Reproduciendo voz de prueba con ${data.provider === 'edge-tts' ? 'Edge TTS' : 'TTS local'}...`, 'info');
         } else {
             throw new Error(data.error || 'Error en síntesis de voz');
         }
@@ -300,7 +300,7 @@ async function testVoice() {
         
         // Fallback al TTS del navegador
         try {
-            const utterance = new SpeechSynthesisUtterance(testText);
+            // Intentar usar Edge TTS primero
             utterance.rate = speed;
             utterance.lang = 'es-ES';
             speechSynthesis.cancel();

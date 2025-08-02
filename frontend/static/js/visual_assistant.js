@@ -389,6 +389,10 @@ function openSaveDocumentModal() {
     }
 }
 
+// Variable global para almacenar la ruta del archivo de audio generado
+let currentAudioFilePath = null;
+let allGeneratedAudioPaths = [];
+
 /**
  * Guardar documento en la base de datos
  */
@@ -426,6 +430,21 @@ async function saveDocument() {
     confirmBtn.textContent = 'Guardando...';
     
     try {
+        // Generar audio del contenido completo antes de guardar
+        let audioFilePath = null;
+        
+        try {
+            console.log('🎵 Generando audio para guardar con el documento...');
+            const result = await synthesizeWithEdgeTTS(content, speechState.currentVoiceType, speechState.currentSpeed);
+            
+            if (result.success && result.filePath) {
+                audioFilePath = result.filePath;
+                console.log('✅ Audio generado exitosamente:', audioFilePath);
+            }
+        } catch (audioError) {
+            console.warn('⚠️ No se pudo generar audio, guardando solo texto:', audioError);
+        }
+        
         const token = localStorage.getItem('auth_token');
         if (!token) {
             throw new Error('No hay sesión activa');
@@ -439,14 +458,18 @@ async function saveDocument() {
             },
             body: JSON.stringify({
                 titulo: title,
-                contenido: content
+                contenido: content,
+                archivo_audio: audioFilePath
             })
         });
         
         const data = await response.json();
         
         if (response.ok && data.status === 'success') {
-            showNotification('Documento guardado exitosamente', 'success');
+            const message = audioFilePath ? 
+                'Documento y audio guardados exitosamente' : 
+                'Documento guardado exitosamente (sin audio)';
+            showNotification(message, 'success');
             
             // Cerrar modal
             const modal = document.getElementById("save-document-modal");
@@ -664,11 +687,11 @@ function prepareTextForSpeech(text) {
 }
 
 /**
- * Sintetizar texto usando OpenAI TTS
+ * Sintetizar texto usando Edge TTS
  */
-async function synthesizeWithOpenAI(text, voiceType, speed) {
+async function synthesizeWithEdgeTTS(text, voiceType, speed) {
     try {
-        console.log(`🎯 Sintetizando con OpenAI: "${text.substring(0, 50)}..." (${voiceType}, ${speed}x)`);
+        console.log(`🎯 Sintetizando con Edge TTS: "${text.substring(0, 50)}..." (${voiceType}, ${speed}x)`);
 
         const response = await fetch('/api/synthesize-speech', {
             method: 'POST',
@@ -689,6 +712,7 @@ async function synthesizeWithOpenAI(text, voiceType, speed) {
             return {
                 success: true,
                 audioUrl: data.audio_url,
+                filePath: data.file_path,
                 provider: data.provider
             };
         } else {
@@ -696,7 +720,7 @@ async function synthesizeWithOpenAI(text, voiceType, speed) {
         }
 
     } catch (error) {
-        console.error('❌ Error en síntesis OpenAI:', error);
+        console.error('❌ Error en síntesis Edge TTS:', error);
         throw error;
     }
 }
@@ -773,7 +797,7 @@ async function playAudioFromUrl(audioUrl) {
 }
 
 /**
- * Iniciar lectura de texto con OpenAI TTS
+ * Iniciar lectura de texto con Edge TTS
  */
 async function speakText() {
     try {
@@ -785,7 +809,7 @@ async function speakText() {
             return;
         }
 
-        console.log('🎯 Iniciando lectura con OpenAI TTS...');
+        console.log('🎯 Iniciando lectura con Edge TTS...');
 
         // Preparar texto
         speechState.sentences = prepareTextForSpeech(text);
@@ -806,7 +830,7 @@ async function speakText() {
         // Iniciar lectura
         await speakFromCurrentIndex();
         
-        showNotification('Iniciando lectura con OpenAI TTS...', 'info');
+        showNotification('Iniciando lectura con Edge TTS...', 'info');
         
     } catch (error) {
         console.error('❌ Error en speakText:', error);
@@ -816,7 +840,7 @@ async function speakText() {
 }
 
 /**
- * Hablar desde el índice actual usando OpenAI TTS
+ * Hablar desde el índice actual usando Edge TTS
  */
 async function speakFromCurrentIndex() {
     if (speechState.currentIndex >= speechState.sentences.length) {
@@ -830,23 +854,29 @@ async function speakFromCurrentIndex() {
     console.log(`🗣️ Hablando segmento ${speechState.currentIndex + 1}/${speechState.sentences.length}: "${currentText.substring(0, 50)}..."`);
 
     try {
-        // Intentar síntesis con OpenAI TTS
-        const result = await synthesizeWithOpenAI(
+        // Intentar síntesis con Edge TTS
+        const result = await synthesizeWithEdgeTTS(
             currentText, 
             speechState.currentVoiceType, 
             speechState.currentSpeed
         );
 
         if (result.success) {
-            // Reproducir audio de OpenAI
+            // Reproducir audio de Edge TTS
             await playAudioFromUrl(result.audioUrl);
+            
+            // Guardar la ruta del archivo para uso posterior
+            if (result.filePath) {
+                allGeneratedAudioPaths.push(result.filePath);
+            }
+            
             // El progreso se maneja en playAudioFromUrl.onended
         } else {
-            throw new Error('Error en síntesis OpenAI');
+            throw new Error('Error en síntesis Edge TTS');
         }
 
     } catch (error) {
-        console.error('❌ Error en síntesis, usando fallback del navegador:', error);
+        console.error('❌ Error en síntesis Edge TTS, usando fallback del navegador:', error);
         
         // Fallback al TTS del navegador solo si OpenAI falla
         speechState.utterance = new SpeechSynthesisUtterance(currentText);
@@ -929,9 +959,9 @@ function pauseReading() {
     // NO cambiar speechState.isReading aquí, debe mantenerse true para poder reanudar
     
     if (speechState.currentAudio && !speechState.currentAudio.paused) {
-        // Pausar audio de OpenAI
+        // Pausar audio de Edge TTS
         speechState.currentAudio.pause();
-        console.log('🎵 Audio OpenAI pausado');
+        console.log('🎵 Audio Edge TTS pausado');
     }
     
     if (synth.speaking) {
@@ -954,16 +984,16 @@ function resumeReading() {
     speechState.isPaused = false;
     
     if (speechState.currentAudio && speechState.currentAudio.paused) {
-        // Reanudar audio de OpenAI que estaba pausado
+        // Reanudar audio de Edge TTS que estaba pausado
         speechState.currentAudio.play()
             .then(() => {
-                console.log('🎵 Audio OpenAI reanudado');
+                console.log('🎵 Audio Edge TTS reanudado');
                 updateButtonState();
                 startProgress();
                 showNotification('Reanudando lectura...', 'info');
             })
             .catch(error => {
-                console.error('❌ Error reanudando audio OpenAI:', error);
+                console.error('❌ Error reanudando audio Edge TTS:', error);
                 // Si falla, continuar desde el índice actual
                 speakFromCurrentIndex();
             });
@@ -1016,11 +1046,11 @@ function updateButtonState() {
     if (!playPauseBtn) return;
     
     // Determinar estado real de reproducción
-    const isOpenAIPlaying = speechState.currentAudio && !speechState.currentAudio.paused && !speechState.currentAudio.ended;
+    const isEdgeTTSPlaying = speechState.currentAudio && !speechState.currentAudio.paused && !speechState.currentAudio.ended;
     const isBrowserTTSPlaying = synth.speaking && !synth.paused;
-    const isActuallyPlaying = isOpenAIPlaying || isBrowserTTSPlaying;
+    const isActuallyPlaying = isEdgeTTSPlaying || isBrowserTTSPlaying;
     
-    console.log(`🔄 Actualizando botón - OpenAI: ${isOpenAIPlaying}, Browser: ${isBrowserTTSPlaying}, isPaused: ${speechState.isPaused}, isReading: ${speechState.isReading}`);
+    console.log(`🔄 Actualizando botón - Edge TTS: ${isEdgeTTSPlaying}, Browser: ${isBrowserTTSPlaying}, isPaused: ${speechState.isPaused}, isReading: ${speechState.isReading}`);
     
     if (speechState.isReading && !speechState.isPaused && isActuallyPlaying) {
         // REPRODUCIENDO

@@ -387,9 +387,9 @@ def save_document():
         
         # Insertar documento
         cursor.execute("""
-            INSERT INTO Documentos (usuario_id, titulo, contenido) 
-            VALUES (%s, %s, %s)
-        """, (request.user_id, titulo, contenido))
+            INSERT INTO Documentos (usuario_id, titulo, contenido, archivo_audio) 
+            VALUES (%s, %s, %s, %s)
+        """, (request.user_id, titulo, contenido, data.get('archivo_audio')))
         
         document_id = cursor.lastrowid
         connection.commit()
@@ -423,7 +423,7 @@ def get_user_documents():
         
         # Obtener documentos del usuario
         cursor.execute("""
-            SELECT id, titulo, contenido, creado_en, actualizado_en 
+            SELECT id, titulo, contenido, archivo_audio, creado_en, actualizado_en 
             FROM Documentos 
             WHERE usuario_id = %s 
             ORDER BY actualizado_en DESC
@@ -466,7 +466,7 @@ def get_document(document_id):
         
         # Obtener documento específico del usuario
         cursor.execute("""
-            SELECT id, titulo, contenido, creado_en, actualizado_en 
+            SELECT id, titulo, contenido, archivo_audio, creado_en, actualizado_en 
             FROM Documentos 
             WHERE id = %s AND usuario_id = %s
         """, (document_id, request.user_id))
@@ -535,6 +535,10 @@ def update_document(document_id):
         if 'contenido' in data:
             update_fields.append("contenido = %s")
             values.append(data['contenido'])
+        
+        if 'archivo_audio' in data:
+            update_fields.append("archivo_audio = %s")
+            values.append(data['archivo_audio'])
         
         if not update_fields:
             return jsonify({'error': 'No hay campos para actualizar'}), 400
