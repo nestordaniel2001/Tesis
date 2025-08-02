@@ -1,9 +1,9 @@
 /**
- * OpenAI TTS Integration for Visual Assistant
- * Integración de OpenAI Text-to-Speech para el asistente visual
+ * Edge TTS Integration for Visual Assistant
+ * Integración de Edge Text-to-Speech para el asistente visual
  */
 
-class OpenAITTSManager {
+class EdgeTTSManager {
     constructor() {
         this.isAvailable = false;
         this.currentAudio = null;
@@ -11,7 +11,7 @@ class OpenAITTSManager {
     }
 
     /**
-     * Verificar si OpenAI TTS está disponible
+     * Verificar si Edge TTS está disponible
      */
     async checkAvailability() {
         try {
@@ -19,19 +19,19 @@ class OpenAITTSManager {
             const data = await response.json();
             
             if (data.success) {
-                this.isAvailable = data.info.openai_available;
-                console.log(`🎤 OpenAI TTS ${this.isAvailable ? 'disponible' : 'no disponible'}`);
+                this.isAvailable = data.info.edge_tts_available;
+                console.log(`🎤 Edge TTS ${this.isAvailable ? 'disponible' : 'no disponible'}`);
                 return this.isAvailable;
             }
         } catch (error) {
-            console.warn('Error verificando disponibilidad de OpenAI TTS:', error);
+            console.warn('Error verificando disponibilidad de Edge TTS:', error);
             this.isAvailable = false;
         }
         return false;
     }
 
     /**
-     * Sintetizar texto usando OpenAI TTS
+     * Sintetizar texto usando Edge TTS
      */
     async synthesizeText(text, voiceType = 'mujer', speed = 1.0) {
         if (!text || typeof text !== 'string') {
@@ -39,7 +39,7 @@ class OpenAITTSManager {
         }
 
         try {
-            console.log(`🎯 Sintetizando con OpenAI TTS: "${text.substring(0, 50)}..." (${voiceType}, ${speed}x)`);
+            console.log(`🎯 Sintetizando con Edge TTS: "${text.substring(0, 50)}..." (${voiceType}, ${speed}x)`);
 
             const response = await fetch('/api/synthesize-speech', {
                 method: 'POST',
@@ -68,7 +68,7 @@ class OpenAITTSManager {
             }
 
         } catch (error) {
-            console.error('❌ Error en síntesis OpenAI TTS:', error);
+            console.error('❌ Error en síntesis Edge TTS:', error);
             throw error;
         }
     }
@@ -187,11 +187,11 @@ class OpenAITTSManager {
 }
 
 // Crear instancia global
-window.openaiTTS = new OpenAITTSManager();
+window.edgeTTS = new EdgeTTSManager();
 
 // Exportar para uso en otros módulos
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = OpenAITTSManager;
+    module.exports = EdgeTTSManager;
 }
 
-console.log('🎤 OpenAI TTS Manager cargado');
+console.log('🎤 Edge TTS Manager cargado');

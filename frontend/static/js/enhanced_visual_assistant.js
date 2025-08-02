@@ -1,12 +1,12 @@
 /**
- * Enhanced Visual Assistant with OpenAI TTS Integration
- * Asistente visual mejorado con integración de OpenAI TTS
+ * Enhanced Visual Assistant with Edge TTS Integration
+ * Asistente visual mejorado con integración de Edge TTS
  */
 
-// Extender el asistente visual existente con capacidades de OpenAI TTS
+// Extender el asistente visual existente con capacidades de Edge TTS
 class EnhancedSpeechAssistant {
     constructor() {
-        this.useOpenAI = true; // Preferir OpenAI TTS cuando esté disponible
+        this.useEdgeTTS = true; // Preferir Edge TTS cuando esté disponible
         this.fallbackToLocal = true; // Usar TTS local como fallback
         this.currentProvider = null;
         this.isInitialized = false;
@@ -20,13 +20,13 @@ class EnhancedSpeechAssistant {
 
         console.log('🚀 Inicializando Enhanced Speech Assistant...');
 
-        // Verificar disponibilidad de OpenAI TTS
-        if (window.openaiTTS) {
-            await window.openaiTTS.checkAvailability();
-            this.useOpenAI = window.openaiTTS.isAvailable;
+        // Verificar disponibilidad de Edge TTS
+        if (window.edgeTTS) {
+            await window.edgeTTS.checkAvailability();
+            this.useEdgeTTS = window.edgeTTS.isAvailable;
         }
 
-        console.log(`🎤 Configuración TTS: OpenAI ${this.useOpenAI ? 'habilitado' : 'deshabilitado'}, Fallback ${this.fallbackToLocal ? 'habilitado' : 'deshabilitado'}`);
+        console.log(`🎤 Configuración TTS: Edge TTS ${this.useEdgeTTS ? 'habilitado' : 'deshabilitado'}, Fallback ${this.fallbackToLocal ? 'habilitado' : 'deshabilitado'}`);
 
         this.isInitialized = true;
     }
@@ -44,18 +44,18 @@ class EnhancedSpeechAssistant {
         }
 
         try {
-            // Intentar con OpenAI TTS primero
-            if (this.useOpenAI && window.openaiTTS && window.openaiTTS.isAvailable) {
-                console.log('🎯 Usando OpenAI TTS para síntesis de alta calidad...');
+            // Intentar con Edge TTS primero
+            if (this.useEdgeTTS && window.edgeTTS && window.edgeTTS.isAvailable) {
+                console.log('🎯 Usando Edge TTS para síntesis de alta calidad...');
                 
-                const result = await window.openaiTTS.synthesizeText(text, voiceType, speed);
+                const result = await window.edgeTTS.synthesizeText(text, voiceType, speed);
                 
                 if (result.success) {
                     this.currentProvider = 'openai';
-                    await window.openaiTTS.playAudio(result.audioUrl);
+                    await window.edgeTTS.playAudio(result.audioUrl);
                     return {
                         success: true,
-                        provider: 'openai',
+                        provider: 'edge-tts',
                         voiceUsed: result.voiceUsed
                     };
                 }
@@ -135,8 +135,8 @@ class EnhancedSpeechAssistant {
      * Pausar reproducción actual
      */
     pauseCurrentSpeech() {
-        if (this.currentProvider === 'openai' && window.openaiTTS) {
-            return window.openaiTTS.pauseAudio();
+        if (this.currentProvider === 'edge-tts' && window.edgeTTS) {
+            return window.edgeTTS.pauseAudio();
         } else if (this.currentProvider === 'local') {
             speechSynthesis.pause();
             return true;
@@ -148,8 +148,8 @@ class EnhancedSpeechAssistant {
      * Reanudar reproducción
      */
     resumeCurrentSpeech() {
-        if (this.currentProvider === 'openai' && window.openaiTTS) {
-            return window.openaiTTS.resumeAudio();
+        if (this.currentProvider === 'edge-tts' && window.edgeTTS) {
+            return window.edgeTTS.resumeAudio();
         } else if (this.currentProvider === 'local') {
             speechSynthesis.resume();
             return true;
@@ -161,8 +161,8 @@ class EnhancedSpeechAssistant {
      * Detener reproducción
      */
     stopCurrentSpeech() {
-        if (this.currentProvider === 'openai' && window.openaiTTS) {
-            return window.openaiTTS.stopAudio();
+        if (this.currentProvider === 'edge-tts' && window.edgeTTS) {
+            return window.edgeTTS.stopAudio();
         } else if (this.currentProvider === 'local') {
             speechSynthesis.cancel();
             return true;
@@ -174,8 +174,8 @@ class EnhancedSpeechAssistant {
      * Verificar si hay reproducción activa
      */
     isSpeaking() {
-        if (this.currentProvider === 'openai' && window.openaiTTS) {
-            return window.openaiTTS.isPlaying();
+        if (this.currentProvider === 'edge-tts' && window.edgeTTS) {
+            return window.edgeTTS.isPlaying();
         } else if (this.currentProvider === 'local') {
             return speechSynthesis.speaking;
         }
@@ -211,7 +211,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Obtener configuración del usuario
                 const userConfig = JSON.parse(localStorage.getItem('user_config') || '{}');
                 const voiceType = userConfig.tipo_voz || 'mujer';
-                const speed = userConfig.velocidad_lectura || 1.0;
+                if (speechState.currentAudio) {
 
                 console.log('🎯 Iniciando lectura con asistente mejorado...');
 
@@ -285,8 +285,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         };
 
-        console.log('✅ Enhanced Speech Assistant integrado correctamente');
+        console.log('✅ Enhanced Speech Assistant con Edge TTS integrado correctamente');
     }
 });
 
-console.log('🎤 Enhanced Visual Assistant cargado');
+console.log('🎤 Enhanced Visual Assistant con Edge TTS cargado');

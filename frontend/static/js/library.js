@@ -91,15 +91,16 @@ function renderDocuments() {
     const documentsHTML = filteredDocuments.map(doc => {
         const createdDate = new Date(doc.creado_en).toLocaleDateString('es-ES');
         const preview = doc.contenido ? doc.contenido.substring(0, 100) + '...' : 'Sin contenido';
+        const hasAudio = doc.archivo_audio ? true : false;
         
         return `
             <div class="library-item" data-document-id="${doc.id}">
                 <div class="item-icon visual-item">
-                    <img src="/static/assets/images/document_icon.png" alt="Icono de documento">
+                    <img src="/static/assets/images/${hasAudio ? 'audio_icon.png' : 'document_icon.png'}" alt="Icono de documento">
                 </div>
                 <div class="item-info">
                     <h3>${escapeHtml(doc.titulo)}</h3>
-                    <p>${createdDate} · Documento</p>
+                    <p>${createdDate} · Documento${hasAudio ? ' con Audio' : ''}</p>
                     <small class="document-preview">${escapeHtml(preview)}</small>
                 </div>
                 <div class="item-actions">
@@ -148,15 +149,61 @@ function viewDocument(documentId) {
     const overlay = document.getElementById('document-modal-overlay');
     const titleElement = document.getElementById('view-document-title');
     const contentElement = document.getElementById('view-document-content');
+    const audioControlsElement = document.getElementById('view-document-audio-controls');
 
     if (modal && overlay && titleElement && contentElement) {
         titleElement.textContent = document.titulo;
         contentElement.textContent = document.contenido || 'Sin contenido';
         
+        // Mostrar controles de audio si el documento tiene audio
+        if (document.archivo_audio && audioControlsElement) {
+            audioControlsElement.style.display = 'block';
+            setupAudioControls(document.archivo_audio);
+        } else if (audioControlsElement) {
+            audioControlsElement.style.display = 'none';
+        }
+        
         modal.style.display = 'block';
         overlay.style.display = 'block';
         
         currentDocumentId = documentId;
+    }
+}
+
+/**
+ * Configurar controles de audio para el documento
+ */
+function setupAudioControls(audioPath) {
+    const audioPlayer = document.getElementById('document-audio-player');
+    const playAudioBtn = document.getElementById('play-document-audio-btn');
+    
+    if (audioPlayer && audioPath) {
+        // Configurar la fuente del audio
+        audioPlayer.src = audioPath.replace(/^.*[\\\/]/, '/static/assets/audio/');
+        
+        if (playAudioBtn) {
+            playAudioBtn.onclick = () => {
+                if (audioPlayer.paused) {
+                    audioPlayer.play();
+                    playAudioBtn.textContent = '⏸️ Pausar Audio';
+                } else {
+                    audioPlayer.pause();
+                    playAudioBtn.textContent = '▶️ Reproducir Audio';
+                }
+            };
+            
+            audioPlayer.onended = () => {
+                playAudioBtn.textContent = '▶️ Reproducir Audio';
+            };
+            
+            audioPlayer.onpause = () => {
+                playAudioBtn.textContent = '▶️ Reproducir Audio';
+            };
+            
+            audioPlayer.onplay = () => {
+                playAudioBtn.textContent = '⏸️ Pausar Audio';
+            };
+        }
     }
 }
 
@@ -328,6 +375,15 @@ async function playDocument() {
         return;
     }
 
+    // Si el documento tiene audio guardado, reproducirlo directamente
+    if (document.archivo_audio) {
+        const audioPlayer = document.getElementById('document-audio-player');
+        if (audioPlayer) {
+            audioPlayer.play();
+            return;
+        }
+    }
+
     const playBtn = document.getElementById('play-document-btn');
     if (!playBtn) return;
 
@@ -340,7 +396,7 @@ async function playDocument() {
         playBtn.disabled = true;
         playBtn.textContent = '🔄 Cargando...';
 
-        // Intentar usar OpenAI TTS
+        // Intentar usar Edge TTS
         const response = await fetch('/api/synthesize-speech', {
             method: 'POST',
             headers: {
