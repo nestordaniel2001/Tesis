@@ -74,6 +74,7 @@
     color: var(--light-bg);
     font-weight: bold;
     cursor: pointer;
+    box-shadow: 0 0 8px rgba(255, 0, 0, 0.5);
 }
 
 .btn-orange:hover {
@@ -199,12 +200,12 @@
     font-weight: 600;
     border-radius: 8px;
     transition: all 0.2s ease;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 0 8px rgba(255, 0, 0, 0.5);
 }
 
 .save-button .btn-orange:hover {
     transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    box-shadow: 0 0 8px rgba(255, 0, 0, 0.5);
 }
 
 /* Estilo específico para el botón modo visual en la barra lateral */
@@ -276,14 +277,15 @@
 .control-buttons button {
     flex: 1 1 calc(25% - 10px); /* 4 botones con espacio */
     min-width: 120px; /* Evita que sean demasiado pequeños */
-    padding: 8px;
+    padding: 4px;
     background-color: var(--primary-orange);
     border: none;
-    border-radius: 5px;
+    border-radius: 8px;
     color: var(--light-bg);
     font-weight: bold;
     cursor: pointer;
     transition: background-color 0.3s ease;
+    box-shadow: 0 0 8px rgba(255, 0, 0, 0.5);
 }
 
 .control-buttons button:hover {

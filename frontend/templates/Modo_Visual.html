@@ -53,7 +53,7 @@
     <button class="btn-gray" id="btn-limpiar">Limpiar</button>
     <button class="btn-gray" id="btn-zoom-in">Zoom +</button>
     <button class="btn-gray" id="btn-zoom-out">Zoom -</button>
-    <button class="btn-gray" id="btn-toggle-size">Agrandar / Encoger</button>
+    <button class="btn-gray" id="btn-toggle-size">Ver texto completo</button>
     
 </div>
 <!-- ÁREA DE LECTURA -->
@@ -66,7 +66,6 @@
                 </div>
                 
                 <div class="reading-section">
-                    <h3>Texto a leer</h3>
                     
                     <!-- Selector de voz en el modo visual -->
                     <div class="voice-controls" style="margin-bottom: 15px; padding: 10px; background-color: #f9f9f9; border-radius: 8px;">
@@ -74,18 +73,13 @@
                             <div style="display: flex; align-items: center; gap: 8px;">
                                 <label for="voice-selector" style="font-weight: bold; color: #333;">Tipo de voz:</label>
                                 <select id="voice-selector" style="padding: 5px 10px; border-radius: 5px; border: 1px solid #ddd;">
-                                    <option value="mujer">👩 Voz Femenina (OpenAI)</option>
-                                    <option value="hombre">👨 Voz Masculina (OpenAI)</option>
+                                    <option value="mujer">👩 Voz Femenina </option>
+                                    <option value="hombre">👨 Voz Masculina</option>
                                 </select>
-                            </div>
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <label for="speed-selector" style="font-weight: bold; color: #333;">Velocidad:</label>
-                                <input type="range" id="speed-selector" min="0.5" max="2" step="0.1" value="1" style="width: 100px;">
-                                <span id="speed-display-visual">1.0x</span>
                             </div>
                         </div>
                     </div>
-                    
+                    <h3>Texto a leer</h3>
                     <div class="reading-content">
                     </div>
                 
@@ -116,7 +110,6 @@
     </div>
     
     <div class="save-button">
-        <button class="btn-orange">Guardar Lectura</button>
                         <button class="btn-orange" id="save-document-btn">Guardar Documento</button>
 </div>
                 </div>

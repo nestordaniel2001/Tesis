@@ -515,7 +515,7 @@ def update_document(document_id):
         
         # Verificar que el documento pertenece al usuario
         cursor.execute("SELECT id FROM Documentos WHERE id = %s AND usuario_id = %s", 
-                      (document_id, request.user_id))
+                        (document_id, request.user_id))
         if not cursor.fetchone():
             return jsonify({'error': 'Documento no encontrado'}), 404
         
