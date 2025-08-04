@@ -3,20 +3,32 @@
  * Maneja la inicialización y coordinación entre los módulos de la aplicación
  */
 
-// Constantes y configuración
-const API_BASE_URL = 'http://localhost:5000/api';
-const USER_ID = localStorage.getItem('user_id') || 'anonymous';
+// Evitar redeclaraciones usando verificaciones
+if (typeof window.API_BASE_URL === 'undefined') {
+    window.API_BASE_URL = 'http://localhost:5000/api';
+}
+
+if (typeof window.USER_ID === 'undefined') {
+    window.USER_ID = localStorage.getItem('user_id') || 'anonymous';
+}
 
 // Estado global de la aplicación
-const appState = {
-    currentMode: localStorage.getItem('currentMode') || 'visual', // 'visual' o 'auditory'
-    userPreferences: null,
-    isInitialized: false,
-    isProcessing: false
-};
+if (typeof window.appState === 'undefined') {
+    window.appState = {
+        currentMode: localStorage.getItem('currentMode') || 'visual', // 'visual' o 'auditory'
+        userPreferences: null,
+        isInitialized: false,
+        isProcessing: false
+    };
+}
 
-// Inicialización de la aplicación
-document.addEventListener('DOMContentLoaded', () => {
+// Función principal de inicialización (solo ejecutar una vez)
+function initializeMainApp() {
+    if (window.appState.isInitialized) {
+        console.log('Aplicación ya inicializada');
+        return;
+    }
+
     console.log('Inicializando Asistente Inteligente Auris...');
     
     // Cargar preferencias del usuario
@@ -34,197 +46,207 @@ document.addEventListener('DOMContentLoaded', () => {
             // Configurar la navegación del menú principal
             setupMainNavigation();
             
+            // Configurar menú móvil
+            setupMobileMenu();
+            
             // Marcar la aplicación como inicializada
-            appState.isInitialized = true;
+            window.appState.isInitialized = true;
             console.log('Asistente Inteligente Auris inicializado correctamente');
         })
         .catch(error => {
             console.error('Error al inicializar la aplicación:', error);
             showNotification('Error al inicializar la aplicación', 'error');
         });
-});
+}
+
+// Inicialización de la aplicación (solo una vez)
+document.addEventListener('DOMContentLoaded', initializeMainApp);
+
 function setupMobileMenu() {
     const menuToggle = document.getElementById('menu-toggle');
-    const mainNav = document.querySelector('.main-nav'); // Cambiado a querySelector con clase
+    const mainNav = document.querySelector('.main-nav');
 
     if (menuToggle && mainNav) {
-        menuToggle.addEventListener('click', () => {
+        // Remover listeners anteriores para evitar duplicados
+        const newMenuToggle = menuToggle.cloneNode(true);
+        menuToggle.parentNode.replaceChild(newMenuToggle, menuToggle);
+        
+        newMenuToggle.addEventListener('click', () => {
             mainNav.classList.toggle('active');
             console.log('Menú toggled, active:', mainNav.classList.contains('active'));
         });
     } else {
         console.warn("No se encontró el botón hamburguesa o el menú principal");
-        console.log('menuToggle:', menuToggle);
-        console.log('mainNav:', mainNav);
     }
 }
 
-// Llamar la función cuando el DOM esté listo
-document.addEventListener('DOMContentLoaded', setupMobileMenu);
-
-// También puedes agregar un event listener para cerrar el menú al hacer clic fuera
-document.addEventListener('click', (event) => {
-    const menuToggle = document.getElementById('menu-toggle');
-    const mainNav = document.querySelector('.main-nav');
+// Event listener para cerrar el menú al hacer clic fuera (solo una vez)
+function setupOutsideClickListener() {
+    if (window.outsideClickListenerAdded) return;
     
-    // Si el clic no fue en el botón hamburguesa ni en el menú, cerrar el menú
-    if (mainNav && menuToggle && 
-        !menuToggle.contains(event.target) && 
-        !mainNav.contains(event.target) && 
-        mainNav.classList.contains('active')) {
-        mainNav.classList.remove('active');
-    }
-});
+    document.addEventListener('click', (event) => {
+        const menuToggle = document.getElementById('menu-toggle');
+        const mainNav = document.querySelector('.main-nav');
+        
+        if (mainNav && menuToggle && 
+            !menuToggle.contains(event.target) && 
+            !mainNav.contains(event.target) && 
+            mainNav.classList.contains('active')) {
+            mainNav.classList.remove('active');
+        }
+    });
+    
+    window.outsideClickListenerAdded = true;
+}
+
+document.addEventListener('DOMContentLoaded', setupOutsideClickListener);
+
 /**
  * Configura los eventos de navegación para los botones del menú principal
  */
 function setupMainNavigation() {
-    // Obtener referencias a los botones
-    const inicioBtn = document.getElementById('btn-inicio');
-    const modoVisualBtn = document.getElementById('btn-modo-visual');
-    const modoAuditivoBtn = document.getElementById('btn-modo-auditivo');
-    const bibliotecaBtn = document.getElementById('btn-biblioteca');
-    const configuracionBtn = document.getElementById('btn-configuracion');
-    const loginBtn = document.getElementById('btn-login');
+    const buttons = [
+        { id: 'btn-inicio', url: '/inicio' },
+        { id: 'btn-modo-visual', url: '/modo_visual' },
+        { id: 'btn-modo-auditivo', url: '/modo_auditivo' },
+        { id: 'btn-biblioteca', url: '/biblioteca' },
+        { id: 'btn-configuracion', url: '/configuracion' },
+        { id: 'btn-login', url: '/' }
+    ];
     
-    // Configurar eventos de clic para cada botón
-    if (inicioBtn) {
-        inicioBtn.addEventListener('click', () => {
-            window.location.href = '/inicio';
-        });
-    }
-    
-    if (modoVisualBtn) {
-        modoVisualBtn.addEventListener('click', () => {
-            window.location.href = '/modo_visual';
-        });
-    }
-    
-    if (modoAuditivoBtn) {
-        modoAuditivoBtn.addEventListener('click', () => {
-            window.location.href = '/modo_auditivo';
-        });
-    }
-    
-    if (bibliotecaBtn) {
-        bibliotecaBtn.addEventListener('click', () => {
-            window.location.href = '/biblioteca';
-        });
-    }
-    
-    if (configuracionBtn) {
-        configuracionBtn.addEventListener('click', () => {
-            window.location.href = '/configuracion';
-        });
-    }
-    
-    if (loginBtn) {
-        loginBtn.addEventListener('click', () => {
-            window.location.href = '/';
-        });
-    }
+    buttons.forEach(({ id, url }) => {
+        const btn = document.getElementById(id);
+        if (btn) {
+            // Remover listeners anteriores
+            const newBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(newBtn, btn);
+            
+            newBtn.addEventListener('click', () => {
+                window.location.href = url;
+            });
+        }
+    });
 
-    // Configurar botones de acción rápida en la página principal
-    const visualQuickButton = document.querySelector('.visual-button');
-    const auditoryQuickButton = document.querySelector('.auditory-button');
+    // Configurar botones de acción rápida
+    const quickButtons = [
+        { selector: '.visual-button', url: '/modo_visual' },
+        { selector: '.auditory-button', url: '/modo_auditivo' },
+        { selector: '.visual-assistant', url: '/modo_visual' },
+        { selector: '.auditory-assistant', url: '/modo_auditivo' }
+    ];
     
-    if (visualQuickButton) {
-        visualQuickButton.addEventListener('click', () => {
-            window.location.href = '/modo_visual';
-        });
-    }
-    
-    if (auditoryQuickButton) {
-        auditoryQuickButton.addEventListener('click', () => {
-            window.location.href = '/modo_auditivo';
-        });
-    }
-    
-    // Configurar las tarjetas de asistente para que también sean clicables
-    const visualAssistantCard = document.querySelector('.visual-assistant');
-    const auditoryAssistantCard = document.querySelector('.auditory-assistant');
-    
-    if (visualAssistantCard) {
-        visualAssistantCard.addEventListener('click', () => {
-            window.location.href = '/modo_visual';
-        });
-    }
-    
-    if (auditoryAssistantCard) {
-        auditoryAssistantCard.addEventListener('click', () => {
-            window.location.href = '/modo_auditivo';
-        });
-    }
+    quickButtons.forEach(({ selector, url }) => {
+        const btn = document.querySelector(selector);
+        if (btn) {
+            const newBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(newBtn, btn);
+            
+            newBtn.addEventListener('click', () => {
+                window.location.href = url;
+            });
+        }
+    });
 }
 
 /**
- * Carga las preferencias del usuario desde el backend
+ * Carga las preferencias del usuario desde localStorage o backend
  */
 async function loadUserPreferences() {
-    try {
-        const response = await fetch(`${API_BASE_URL}/get-preferences?user_id=${USER_ID}`);
-        if (!response.ok) {
-            throw new Error('Error al cargar preferencias');
+    // Primero intentar cargar desde localStorage
+    const localPrefs = localStorage.getItem('user_preferences');
+    if (localPrefs) {
+        try {
+            window.appState.userPreferences = JSON.parse(localPrefs);
+            console.log('Preferencias cargadas desde localStorage:', window.appState.userPreferences);
+            
+            if (window.appState.userPreferences.preferred_mode) {
+                window.appState.currentMode = window.appState.userPreferences.preferred_mode;
+            }
+            
+            return window.appState.userPreferences;
+        } catch (error) {
+            console.error('Error al parsear preferencias locales:', error);
         }
-        
-        appState.userPreferences = await response.json();
-        console.log('Preferencias cargadas:', appState.userPreferences);
-        
-        // Establecer modo según las preferencias
-        if (appState.userPreferences.preferred_mode) {
-            appState.currentMode = appState.userPreferences.preferred_mode;
-        }
-        
-        return appState.userPreferences;
-    } catch (error) {
-        console.error('Error al cargar preferencias:', error);
-        
-        // Establecer preferencias predeterminadas
-        appState.userPreferences = {
-            font_size: 'medium',
-            high_contrast: false,
-            simplified_text: false,
-            audio_feedback: true,
-            voice_type: 'default',
-            speech_speed: 1.0,
-            preferred_mode: appState.currentMode
-        };
-        
-        return appState.userPreferences;
     }
+    
+    // Si no hay preferencias locales, intentar cargar del backend
+    try {
+        const response = await fetch(`${window.API_BASE_URL}/get-preferences?user_id=${window.USER_ID}`);
+        if (response.ok) {
+            window.appState.userPreferences = await response.json();
+            console.log('Preferencias cargadas desde backend:', window.appState.userPreferences);
+            
+            // Guardar en localStorage para futuras cargas
+            localStorage.setItem('user_preferences', JSON.stringify(window.appState.userPreferences));
+            
+            if (window.appState.userPreferences.preferred_mode) {
+                window.appState.currentMode = window.appState.userPreferences.preferred_mode;
+            }
+            
+            return window.appState.userPreferences;
+        } else {
+            console.log('Backend no disponible o endpoint no encontrado, usando preferencias por defecto');
+        }
+    } catch (error) {
+        console.log('Error al conectar con backend, usando preferencias por defecto:', error.message);
+    }
+    
+    // Usar preferencias por defecto si no se pueden cargar
+    window.appState.userPreferences = {
+        font_size: 'medium',
+        high_contrast: false,
+        simplified_text: false,
+        audio_feedback: true,
+        voice_type: 'default',
+        speech_speed: 1.0,
+        preferred_mode: window.appState.currentMode
+    };
+    
+    // Guardar las preferencias por defecto en localStorage
+    localStorage.setItem('user_preferences', JSON.stringify(window.appState.userPreferences));
+    
+    console.log('Usando preferencias por defecto:', window.appState.userPreferences);
+    return window.appState.userPreferences;
 }
 
 /**
- * Guarda las preferencias del usuario en el backend
+ * Guarda las preferencias del usuario en localStorage y backend
  */
 async function saveUserPreferences(preferences = null) {
-    const prefsToSave = preferences || appState.userPreferences;
+    const prefsToSave = preferences || window.appState.userPreferences;
+    prefsToSave.preferred_mode = window.appState.currentMode;
     
+    // Siempre guardar en localStorage primero
     try {
-        // Guardar también el modo actual
-        prefsToSave.preferred_mode = appState.currentMode;
-        
-        const response = await fetch(`${API_BASE_URL}/save-preferences`, {
+        localStorage.setItem('user_preferences', JSON.stringify(prefsToSave));
+        console.log('Preferencias guardadas en localStorage');
+    } catch (error) {
+        console.error('Error al guardar en localStorage:', error);
+    }
+    
+    // Intentar guardar en backend si está disponible
+    try {
+        const response = await fetch(`${window.API_BASE_URL}/save-preferences`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                user_id: USER_ID,
+                user_id: window.USER_ID,
                 preferences: prefsToSave
             })
         });
         
-        if (!response.ok) {
-            throw new Error('Error al guardar preferencias');
+        if (response.ok) {
+            console.log('Preferencias guardadas en backend');
+            return true;
+        } else {
+            console.log('Backend no disponible para guardar preferencias, solo guardado local');
+            return true; // Aún consideramos éxito si se guardó localmente
         }
-        
-        console.log('Preferencias guardadas correctamente');
-        return true;
     } catch (error) {
-        console.error('Error al guardar preferencias:', error);
-        showNotification('No se pudieron guardar las preferencias', 'error');
-        return false;
+        console.log('Error al conectar con backend para guardar:', error.message);
+        return true; // Aún consideramos éxito si se guardó localmente
     }
 }
 
@@ -232,17 +254,14 @@ async function saveUserPreferences(preferences = null) {
  * Inicializa los componentes de la aplicación según el modo
  */
 function initializeComponents() {
-    // Componentes comunes
     initializeToolbar();
     initializeLibrary();
     
-    // Componentes específicos del modo
     const visualContainer = document.getElementById('visual-mode-container');
     const auditoryContainer = document.getElementById('auditory-mode-container');
     
-    // Solo inicializar los componentes si estamos en la página correspondiente
     if (visualContainer && auditoryContainer) {
-        if (appState.currentMode === 'visual') {
+        if (window.appState.currentMode === 'visual') {
             initializeVisualAssistant();
             auditoryContainer.style.display = 'none';
             visualContainer.style.display = 'block';
@@ -253,7 +272,6 @@ function initializeComponents() {
         }
     } 
     
-    // Si estamos en una página específica, inicializar solo lo necesario
     const currentPath = window.location.pathname;
     
     if (currentPath.includes('modo_visual')) {
@@ -267,22 +285,19 @@ function initializeComponents() {
  * Aplica la configuración de accesibilidad según las preferencias
  */
 function applyAccessibilitySettings() {
-    const prefs = appState.userPreferences;
+    const prefs = window.appState.userPreferences;
     
-    // Aplicar tamaño de fuente
     document.documentElement.className = document.documentElement.className
         .replace(/ font-size-\w+/g, '')
         .trim();
     document.documentElement.classList.add(`font-size-${prefs.font_size}`);
     
-    // Aplicar contraste
     if (prefs.high_contrast) {
         document.documentElement.classList.add('high-contrast');
     } else {
         document.documentElement.classList.remove('high-contrast');
     }
     
-    // Configurar velocidad de lectura en el modo auditivo
     if (window.audioAssistant) {
         window.audioAssistant.setSpeechSpeed(prefs.speech_speed || 1.0);
     }
@@ -296,11 +311,15 @@ function setupModeSwitchers() {
     const auditoryModeBtn = document.getElementById('switch-to-auditory');
     
     if (visualModeBtn) {
-        visualModeBtn.addEventListener('click', () => switchMode('visual'));
+        const newBtn = visualModeBtn.cloneNode(true);
+        visualModeBtn.parentNode.replaceChild(newBtn, visualModeBtn);
+        newBtn.addEventListener('click', () => switchMode('visual'));
     }
     
     if (auditoryModeBtn) {
-        auditoryModeBtn.addEventListener('click', () => switchMode('auditory'));
+        const newBtn = auditoryModeBtn.cloneNode(true);
+        auditoryModeBtn.parentNode.replaceChild(newBtn, auditoryModeBtn);
+        newBtn.addEventListener('click', () => switchMode('auditory'));
     }
 }
 
@@ -308,16 +327,13 @@ function setupModeSwitchers() {
  * Cambia entre el modo visual y auditivo
  */
 function switchMode(newMode) {
-    if (newMode === appState.currentMode) return;
+    if (newMode === window.appState.currentMode) return;
     
-    // Guardar el modo anterior para referencia
-    const previousMode = appState.currentMode;
-    appState.currentMode = newMode;
+    const previousMode = window.appState.currentMode;
+    window.appState.currentMode = newMode;
     
-    // Guardar en localStorage
     localStorage.setItem('currentMode', newMode);
     
-    // Si estamos en la página principal, actualizar la interfaz
     const visualContainer = document.getElementById('visual-mode-container');
     const auditoryContainer = document.getElementById('auditory-mode-container');
     
@@ -332,7 +348,6 @@ function switchMode(newMode) {
             initializeAudioAssistant();
         }
     } else {
-        // Si estamos en otra página, redirigir a la página correspondiente
         if (newMode === 'visual') {
             window.location.href = '/modo_visual';
         } else {
@@ -340,11 +355,9 @@ function switchMode(newMode) {
         }
     }
     
-    // Guardar preferencia en el servidor
-    appState.userPreferences.preferred_mode = newMode;
+    window.appState.userPreferences.preferred_mode = newMode;
     saveUserPreferences();
     
-    // Notificar al usuario
     showNotification(`Cambiado a modo ${newMode === 'visual' ? 'visual' : 'auditivo'}`, 'info');
 }
 
@@ -356,11 +369,15 @@ function initializeToolbar() {
     const helpBtn = document.getElementById('help-button');
     
     if (settingsBtn) {
-        settingsBtn.addEventListener('click', () => openSettingsModal());
+        const newBtn = settingsBtn.cloneNode(true);
+        settingsBtn.parentNode.replaceChild(newBtn, settingsBtn);
+        newBtn.addEventListener('click', () => openSettingsModal());
     }
     
     if (helpBtn) {
-        helpBtn.addEventListener('click', () => openHelpModal());
+        const newBtn = helpBtn.cloneNode(true);
+        helpBtn.parentNode.replaceChild(newBtn, helpBtn);
+        newBtn.addEventListener('click', () => openHelpModal());
     }
 }
 
@@ -368,7 +385,6 @@ function initializeToolbar() {
  * Inicializa el módulo de biblioteca
  */
 function initializeLibrary() {
-    // La implementación dependerá de las funcionalidades específicas
     console.log('Biblioteca inicializada');
 }
 
@@ -379,52 +395,52 @@ function openSettingsModal() {
     const modal = document.getElementById('settings-modal');
     if (!modal) return;
     
-    // Llenar el modal con la configuración actual
-    const fontSizeSelect = document.getElementById('font-size-setting');
-    const contrastToggle = document.getElementById('contrast-toggle');
-    const simplifiedTextToggle = document.getElementById('simplified-text-toggle');
-    const audioFeedbackToggle = document.getElementById('audio-feedback-toggle');
-    const voiceTypeSelect = document.getElementById('voice-type-setting');
-    const speechSpeedRange = document.getElementById('speech-speed-setting');
+    const elements = {
+        fontSizeSelect: document.getElementById('font-size-setting'),
+        contrastToggle: document.getElementById('contrast-toggle'),
+        simplifiedTextToggle: document.getElementById('simplified-text-toggle'),
+        audioFeedbackToggle: document.getElementById('audio-feedback-toggle'),
+        voiceTypeSelect: document.getElementById('voice-type-setting'),
+        speechSpeedRange: document.getElementById('speech-speed-setting')
+    };
     
-    if (fontSizeSelect) fontSizeSelect.value = appState.userPreferences.font_size;
-    if (contrastToggle) contrastToggle.checked = appState.userPreferences.high_contrast;
-    if (simplifiedTextToggle) simplifiedTextToggle.checked = appState.userPreferences.simplified_text;
-    if (audioFeedbackToggle) audioFeedbackToggle.checked = appState.userPreferences.audio_feedback;
-    if (voiceTypeSelect) voiceTypeSelect.value = appState.userPreferences.voice_type || 'default';
-    if (speechSpeedRange) speechSpeedRange.value = appState.userPreferences.speech_speed || 1.0;
+    const prefs = window.appState.userPreferences;
     
-    // Mostrar el modal
+    if (elements.fontSizeSelect) elements.fontSizeSelect.value = prefs.font_size;
+    if (elements.contrastToggle) elements.contrastToggle.checked = prefs.high_contrast;
+    if (elements.simplifiedTextToggle) elements.simplifiedTextToggle.checked = prefs.simplified_text;
+    if (elements.audioFeedbackToggle) elements.audioFeedbackToggle.checked = prefs.audio_feedback;
+    if (elements.voiceTypeSelect) elements.voiceTypeSelect.value = prefs.voice_type || 'default';
+    if (elements.speechSpeedRange) elements.speechSpeedRange.value = prefs.speech_speed || 1.0;
+    
     modal.style.display = 'block';
     
-    // Configurar el botón para guardar configuración
     const saveBtn = document.getElementById('save-settings-button');
     if (saveBtn) {
-        saveBtn.addEventListener('click', () => {
-            // Recopilar configuración
-            if (fontSizeSelect) appState.userPreferences.font_size = fontSizeSelect.value;
-            if (contrastToggle) appState.userPreferences.high_contrast = contrastToggle.checked;
-            if (simplifiedTextToggle) appState.userPreferences.simplified_text = simplifiedTextToggle.checked;
-            if (audioFeedbackToggle) appState.userPreferences.audio_feedback = audioFeedbackToggle.checked;
-            if (voiceTypeSelect) appState.userPreferences.voice_type = voiceTypeSelect.value;
-            if (speechSpeedRange) appState.userPreferences.speech_speed = parseFloat(speechSpeedRange.value);
+        const newBtn = saveBtn.cloneNode(true);
+        saveBtn.parentNode.replaceChild(newBtn, saveBtn);
+        
+        newBtn.addEventListener('click', () => {
+            if (elements.fontSizeSelect) prefs.font_size = elements.fontSizeSelect.value;
+            if (elements.contrastToggle) prefs.high_contrast = elements.contrastToggle.checked;
+            if (elements.simplifiedTextToggle) prefs.simplified_text = elements.simplifiedTextToggle.checked;
+            if (elements.audioFeedbackToggle) prefs.audio_feedback = elements.audioFeedbackToggle.checked;
+            if (elements.voiceTypeSelect) prefs.voice_type = elements.voiceTypeSelect.value;
+            if (elements.speechSpeedRange) prefs.speech_speed = parseFloat(elements.speechSpeedRange.value);
             
-            // Guardar y aplicar
             saveUserPreferences();
             applyAccessibilitySettings();
             
-            // Cerrar modal
             modal.style.display = 'none';
-            
-            // Notificar
             showNotification('Configuración guardada correctamente', 'success');
         });
     }
     
-    // Configurar el botón para cerrar
     const closeBtn = document.getElementById('close-settings-button');
     if (closeBtn) {
-        closeBtn.addEventListener('click', () => {
+        const newBtn = closeBtn.cloneNode(true);
+        closeBtn.parentNode.replaceChild(newBtn, closeBtn);
+        newBtn.addEventListener('click', () => {
             modal.style.display = 'none';
         });
     }
@@ -437,13 +453,13 @@ function openHelpModal() {
     const modal = document.getElementById('help-modal');
     if (!modal) return;
     
-    // Mostrar el modal
     modal.style.display = 'block';
     
-    // Configurar el botón para cerrar
     const closeBtn = document.getElementById('close-help-button');
     if (closeBtn) {
-        closeBtn.addEventListener('click', () => {
+        const newBtn = closeBtn.cloneNode(true);
+        closeBtn.parentNode.replaceChild(newBtn, closeBtn);
+        newBtn.addEventListener('click', () => {
             modal.style.display = 'none';
         });
     }
@@ -453,42 +469,67 @@ function openHelpModal() {
  * Muestra una notificación al usuario
  */
 function showNotification(message, type = 'info') {
+    // Remover notificaciones existentes del mismo tipo
+    const existingNotifications = document.querySelectorAll(`.notification.${type}`);
+    existingNotifications.forEach(notification => notification.remove());
+    
     const notification = document.createElement('div');
     notification.className = `notification ${type}`;
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 12px 16px;
+        border-radius: 6px;
+        color: white;
+        font-size: 14px;
+        font-weight: 500;
+        z-index: 10000;
+        max-width: 300px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+        background-color: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
+    `;
+    
     notification.innerHTML = `
-        <div class="notification-content">
-            <p>${message}</p>
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <span>${type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️'}</span>
+            <span style="flex: 1;">${message}</span>
+            <button onclick="this.parentElement.parentElement.remove()" 
+                    style="background: none; border: none; color: white; font-size: 16px; cursor: pointer; padding: 0;">×</button>
         </div>
     `;
     
     document.body.appendChild(notification);
     
-    // Reproducir feedback auditivo si está habilitado
-    if (appState.userPreferences.audio_feedback) {
+    setTimeout(() => notification.style.transform = 'translateX(0)', 100);
+    setTimeout(() => {
+        notification.style.transform = 'translateX(100%)';
+        setTimeout(() => {
+            if (notification.parentElement) {
+                notification.remove();
+            }
+        }, 300);
+    }, 3000);
+    
+    if (window.appState.userPreferences && window.appState.userPreferences.audio_feedback) {
         speakText(message);
     }
-    
-    // Ocultar la notificación después de 5 segundos
-    setTimeout(() => {
-        notification.classList.add('fade-out');
-        setTimeout(() => {
-            notification.remove();
-        }, 500);
-    }, 5000);
 }
 
 /**
  * Función para sintetizar voz a partir de texto
  */
 async function speakText(text, voiceType = null, speed = null) {
-    if (!appState.userPreferences.audio_feedback) return;
+    if (!window.appState.userPreferences || !window.appState.userPreferences.audio_feedback) return;
     
-    // Usar preferencias del usuario si no se especifica
-    const voice = voiceType || appState.userPreferences.voice_type || 'default';
-    const speechSpeed = speed || appState.userPreferences.speech_speed || 1.0;
+    const voice = voiceType || window.appState.userPreferences.voice_type || 'default';
+    const speechSpeed = speed || window.appState.userPreferences.speech_speed || 1.0;
     
+    // Intentar usar el backend primero
     try {
-        const response = await fetch(`${API_BASE_URL}/text-to-speech`, {
+        const response = await fetch(`${window.API_BASE_URL}/text-to-speech`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -500,19 +541,34 @@ async function speakText(text, voiceType = null, speed = null) {
             })
         });
         
-        if (!response.ok) {
-            throw new Error('Error al sintetizar voz');
+        if (response.ok) {
+            const data = await response.json();
+            const audio = new Audio(data.audio_url);
+            audio.play();
+            return true;
+        }
+    } catch (error) {
+        console.log('Backend TTS no disponible, usando TTS del navegador:', error.message);
+    }
+    
+    // Fallback al TTS del navegador
+    try {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'es-ES';
+        utterance.rate = speechSpeed;
+        
+        // Seleccionar voz si está disponible
+        const voices = speechSynthesis.getVoices();
+        if (voices.length > 0) {
+            const spanishVoice = voices.find(v => v.lang.includes('es')) || voices[0];
+            utterance.voice = spanishVoice;
         }
         
-        const data = await response.json();
-        
-        // Reproducir audio
-        const audio = new Audio(data.audio_url);
-        audio.play();
-        
+        speechSynthesis.cancel(); // Cancelar cualquier habla anterior
+        speechSynthesis.speak(utterance);
         return true;
-    } catch (error) {
-        console.error('Error al sintetizar voz:', error);
+    } catch (fallbackError) {
+        console.error('Error en TTS fallback:', fallbackError);
         return false;
     }
 }
@@ -523,9 +579,7 @@ async function speakText(text, voiceType = null, speed = null) {
 function initializeVisualAssistant() {
     console.log('Inicializando asistente visual...');
     
-    // Cargar el módulo específico solo si es necesario
     if (typeof window.visualAssistant === 'undefined') {
-        // Crear script dinámicamente
         const script = document.createElement('script');
         script.src = '/static/js/visual_assistant.js';
         script.onload = () => {
@@ -546,9 +600,7 @@ function initializeVisualAssistant() {
 function initializeAudioAssistant() {
     console.log('Inicializando asistente auditivo...');
     
-    // Cargar el módulo específico solo si es necesario
     if (typeof window.audioAssistant === 'undefined') {
-        // Crear script dinámicamente
         const script = document.createElement('script');
         script.src = '/static/js/audio_assistant.js';
         script.onload = () => {
@@ -564,12 +616,14 @@ function initializeAudioAssistant() {
 }
 
 // Exportar funciones para uso en otros módulos
-window.aurisApp = {
-    speakText,
-    showNotification,
-    switchMode,
-    getUserPreferences: () => appState.userPreferences,
-    saveUserPreferences,
-    isProcessing: () => appState.isProcessing,
-    setProcessing: (state) => { appState.isProcessing = state; }
-};
+if (typeof window.aurisApp === 'undefined') {
+    window.aurisApp = {
+        speakText,
+        showNotification,
+        switchMode,
+        getUserPreferences: () => window.appState.userPreferences,
+        saveUserPreferences,
+        isProcessing: () => window.appState.isProcessing,
+        setProcessing: (state) => { window.appState.isProcessing = state; }
+    };
+}

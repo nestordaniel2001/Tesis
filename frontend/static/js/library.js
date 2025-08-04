@@ -96,7 +96,7 @@ function renderDocuments() {
         return `
             <div class="library-item" data-document-id="${doc.id}">
                 <div class="item-icon visual-item">
-                    <img src="/static/assets/images/${hasAudio ? 'audio_icon.png' : 'document_icon.png'}" alt="Icono de documento">
+                    <img src="/static/assets/images/${hasAudio ? 'document_icon.png' : 'audio_icon.png'}" alt="Icono de documento">
                 </div>
                 <div class="item-info">
                     <h3>${escapeHtml(doc.titulo)}</h3>
@@ -142,8 +142,8 @@ function setupDocumentButtons() {
  * Ver documento en modal
  */
 function viewDocument(documentId) {
-    const document = currentDocuments.find(doc => doc.id === documentId);
-    if (!document) return;
+    const doc = currentDocuments.find(d => d.id === documentId);
+    if (!doc) return;
 
     const modal = document.getElementById('view-document-modal');
     const overlay = document.getElementById('document-modal-overlay');
@@ -152,13 +152,13 @@ function viewDocument(documentId) {
     const audioControlsElement = document.getElementById('view-document-audio-controls');
 
     if (modal && overlay && titleElement && contentElement) {
-        titleElement.textContent = document.titulo;
-        contentElement.textContent = document.contenido || 'Sin contenido';
+        titleElement.textContent = doc.titulo;
+        contentElement.textContent = doc.contenido || 'Sin contenido';
         
         // Mostrar controles de audio si el documento tiene audio
-        if (document.archivo_audio && audioControlsElement) {
+        if (doc.archivo_audio && audioControlsElement) {
             audioControlsElement.style.display = 'block';
-            setupAudioControls(document.archivo_audio);
+            setupAudioControls(doc.archivo_audio);
         } else if (audioControlsElement) {
             audioControlsElement.style.display = 'none';
         }
@@ -211,8 +211,8 @@ function setupAudioControls(audioPath) {
  * Editar documento en modal
  */
 function editDocument(documentId) {
-    const document = currentDocuments.find(doc => doc.id === documentId);
-    if (!document) return;
+    const doc = currentDocuments.find(d => d.id === documentId);
+    if (!doc) return;
 
     const modal = document.getElementById('edit-document-modal');
     const overlay = document.getElementById('document-modal-overlay');
@@ -221,8 +221,8 @@ function editDocument(documentId) {
     const charCounter = document.getElementById('edit-char-counter');
 
     if (modal && overlay && titleInput && contentTextarea) {
-        titleInput.value = document.titulo;
-        contentTextarea.value = document.contenido || '';
+        titleInput.value = doc.titulo;
+        contentTextarea.value = doc.contenido || '';
         
         // Actualizar contador de caracteres
         updateEditCharCounter();
@@ -322,10 +322,10 @@ async function saveDocumentChanges() {
 async function deleteDocument() {
     if (!currentDocumentId) return;
 
-    const document = currentDocuments.find(doc => doc.id === currentDocumentId);
-    if (!document) return;
+    const doc = currentDocuments.find(d => d.id === currentDocumentId);
+    if (!doc) return;
 
-    const confirmDelete = confirm(`¿Estás seguro de que deseas eliminar el documento "${document.titulo}"?\n\nEsta acción no se puede deshacer.`);
+    const confirmDelete = confirm(`¿Estás seguro de que deseas eliminar el documento "${doc.titulo}"?\n\nEsta acción no se puede deshacer.`);
     if (!confirmDelete) return;
 
     const deleteBtn = document.getElementById('delete-document-btn');
@@ -369,14 +369,14 @@ async function deleteDocument() {
  * Reproducir documento con TTS
  */
 async function playDocument() {
-    const document = currentDocuments.find(doc => doc.id === currentDocumentId);
-    if (!document || !document.contenido) {
+    const doc = currentDocuments.find(d => d.id === currentDocumentId);
+    if (!doc || !doc.contenido) {
         showNotification('No hay contenido para reproducir', 'error');
         return;
     }
 
     // Si el documento tiene audio guardado, reproducirlo directamente
-    if (document.has_audio) {
+    if (doc.has_audio) {
         const audioPlayer = document.getElementById('document-audio-player');
         if (audioPlayer) {
             audioPlayer.src = `/api/documents/${currentDocumentId}/audio`;
@@ -404,7 +404,7 @@ async function playDocument() {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                text: document.contenido,
+                text: doc.contenido,
                 voice_type: voiceType,
                 speed: speed
             })
@@ -458,7 +458,7 @@ async function playDocument() {
         
         // Fallback al TTS del navegador
         try {
-            const utterance = new SpeechSynthesisUtterance(document.contenido);
+            const utterance = new SpeechSynthesisUtterance(doc.contenido);
             utterance.lang = 'es-ES';
             speechSynthesis.speak(utterance);
             
@@ -672,7 +672,7 @@ function renderFilteredDocuments(documents, title) {
         return `
             <div class="library-item" data-document-id="${doc.id}">
                 <div class="item-icon visual-item">
-                    <img src="/static/assets/images/document_icon.png" alt="Icono de documento">
+                    <img src="/static/assets/images/audio_icon.png" alt="Icono de documento">
                 </div>
                 <div class="item-info">
                     <h3>${escapeHtml(doc.titulo)}</h3>
