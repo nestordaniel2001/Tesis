@@ -376,9 +376,10 @@ async function playDocument() {
     }
 
     // Si el documento tiene audio guardado, reproducirlo directamente
-    if (document.archivo_audio) {
+    if (document.has_audio) {
         const audioPlayer = document.getElementById('document-audio-player');
         if (audioPlayer) {
+            audioPlayer.src = `/api/documents/${currentDocumentId}/audio`;
             audioPlayer.play();
             return;
         }

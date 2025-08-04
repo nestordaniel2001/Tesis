@@ -420,21 +420,6 @@ async function saveDocument() {
     confirmBtn.textContent = 'Guardando...';
     
     try {
-        // Generar audio del contenido completo antes de guardar
-        let audioFilePath = null;
-        
-        try {
-            console.log('🎵 Generando audio para guardar con el documento...');
-            const result = await synthesizeWithEdgeTTS(content, speechState.currentVoiceType, speechState.currentSpeed);
-            
-            if (result.success && result.filePath) {
-                audioFilePath = result.filePath;
-                console.log('✅ Audio generado exitosamente:', audioFilePath);
-            }
-        } catch (audioError) {
-            console.warn('⚠️ No se pudo generar audio, guardando solo texto:', audioError);
-        }
-        
         const token = localStorage.getItem('auth_token');
         if (!token) {
             throw new Error('No hay sesión activa');
@@ -448,17 +433,16 @@ async function saveDocument() {
             },
             body: JSON.stringify({
                 titulo: title,
-                contenido: content,
-                archivo_audio: audioFilePath
+                contenido: content
             })
         });
         
         const data = await response.json();
         
         if (response.ok && data.status === 'success') {
-            const message = audioFilePath ? 
+            const message = data.has_audio ? 
                 'Documento y audio guardados exitosamente' : 
-                'Documento guardado exitosamente (sin audio)';
+                'Documento guardado exitosamente';
             showNotification(message, 'success');
             
             // Cerrar modal

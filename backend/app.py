@@ -570,6 +570,54 @@ def get_document(document_id):
         if connection:
             connection.close()
 
+@app.route('/api/documents/<int:document_id>/audio', methods=['GET'])
+@auth_required
+def get_document_audio(document_id):
+    """Obtener el audio de un documento específico"""
+    connection = None
+    cursor = None
+    try:
+        connection = get_db_connection()
+        if not connection:
+            return jsonify({'error': 'Error de conexión a la base de datos'}), 500
+            
+        cursor = connection.cursor()
+        
+        # Obtener audio del documento
+        cursor.execute("""
+            SELECT archivo_audio, nombre_archivo, tipo_mime 
+            FROM Documentos 
+            WHERE id = %s AND usuario_id = %s AND archivo_audio IS NOT NULL
+        """, (document_id, request.user_id))
+        
+        result = cursor.fetchone()
+        
+        if not result:
+            return jsonify({'error': 'Audio no encontrado'}), 404
+        
+        archivo_audio, nombre_archivo, tipo_mime = result
+        
+        # Crear respuesta con el audio
+        from flask import Response
+        response = Response(
+            archivo_audio,
+            mimetype=tipo_mime or 'audio/mpeg',
+            headers={
+                'Content-Disposition': f'inline; filename="{nombre_archivo or "audio.mp3"}"',
+                'Cache-Control': 'public, max-age=3600'
+            }
+        )
+        
+        return response
+        
+    except mysql.connector.Error as e:
+        return jsonify({'error': f'Error de base de datos: {str(e)}'}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if connection:
+            connection.close()
+
 @app.route('/api/documents/<int:document_id>', methods=['PUT'])
 @auth_required
 def update_document(document_id):
@@ -672,6 +720,8 @@ def delete_document(document_id):
             cursor.close()
         if connection:
             connection.close()
+
+# ===== RUTAS DE CONFIGURACIÓN DE USUARIO =====
 
 @app.route('/api/user/config', methods=['GET'])
 @auth_required
