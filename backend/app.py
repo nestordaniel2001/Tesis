@@ -17,6 +17,8 @@ import docx2txt
 from PyPDF2 import PdfReader
 from werkzeug.utils import secure_filename
 from backend.routes.tts_routes import tts_bp
+import base64
+import requests
 
 # Configuración de rutas
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -376,6 +378,72 @@ def save_document():
     if len(titulo) > 50:
         return jsonify({'error': 'El título no puede exceder 50 caracteres'}), 400
     
+    # Generar audio del contenido usando Edge TTS
+    archivo_audio_blob = None
+    nombre_archivo = None
+    tipo_mime = 'audio/mpeg'
+    
+    try:
+        # Obtener configuración del usuario para la voz
+        cursor_config = connection.cursor(dictionary=True)
+        cursor_config.execute("SELECT nombre_configuracion, valor_configuracion FROM Configuraciones_Usuario WHERE usuario_id = %s", (request.user_id,))
+        configs = cursor_config.fetchall()
+        cursor_config.close()
+        
+        # Convertir configuraciones a diccionario
+        configuraciones = {}
+        for config in configs:
+            key = config['nombre_configuracion']
+            value = config['valor_configuracion']
+            if key in ['contraste_alto', 'retroalimentacion_audio']:
+                configuraciones[key] = value.lower() == 'true'
+            elif key == 'velocidad_lectura':
+                configuraciones[key] = float(value)
+            else:
+                configuraciones[key] = value
+        
+        voice_type = configuraciones.get('tipo_voz', 'mujer')
+        speed = configuraciones.get('velocidad_lectura', 1.0)
+        
+        # Llamar al endpoint de síntesis de voz
+        tts_response = requests.post('http://localhost:5000/api/synthesize-speech', 
+                                   json={
+                                       'text': contenido,
+                                       'voice_type': voice_type,
+                                       'speed': speed
+                                   })
+        
+        if tts_response.status_code == 200:
+            tts_data = tts_response.json()
+            if tts_data.get('success'):
+                # Descargar el archivo de audio generado
+                audio_url = tts_data['audio_url']
+                if audio_url.startswith('/static/'):
+                    # Es una URL local, leer el archivo
+                    audio_file_path = os.path.join(project_root, 'frontend', audio_url.lstrip('/'))
+                    if os.path.exists(audio_file_path):
+                        with open(audio_file_path, 'rb') as audio_file:
+                            archivo_audio_blob = audio_file.read()
+                        nombre_archivo = f"documento_audio_{datetime.now().strftime('%Y%m%d_%H%M%S')}.mp3"
+                        print(f"✅ Audio generado y leído: {len(archivo_audio_blob)} bytes")
+                    else:
+                        print(f"⚠️ Archivo de audio no encontrado: {audio_file_path}")
+                else:
+                    # Es una URL externa, descargar
+                    audio_response = requests.get(audio_url)
+                    if audio_response.status_code == 200:
+                        archivo_audio_blob = audio_response.content
+                        nombre_archivo = f"documento_audio_{datetime.now().strftime('%Y%m%d_%H%M%S')}.mp3"
+                        print(f"✅ Audio descargado: {len(archivo_audio_blob)} bytes")
+            else:
+                print(f"⚠️ Error en síntesis TTS: {tts_data.get('error')}")
+        else:
+            print(f"⚠️ Error llamando a TTS: {tts_response.status_code}")
+            
+    except Exception as e:
+        print(f"⚠️ Error generando audio: {e}")
+        # Continuar sin audio si hay error
+    
     connection = None
     cursor = None
     try:
@@ -387,17 +455,20 @@ def save_document():
         
         # Insertar documento
         cursor.execute("""
-            INSERT INTO Documentos (usuario_id, titulo, contenido, archivo_audio) 
-            VALUES (%s, %s, %s, %s)
-        """, (request.user_id, titulo, contenido, data.get('archivo_audio')))
+            INSERT INTO Documentos (usuario_id, titulo, contenido, archivo_audio, nombre_archivo, tipo_mime) 
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (request.user_id, titulo, contenido, archivo_audio_blob, nombre_archivo, tipo_mime))
         
         document_id = cursor.lastrowid
         connection.commit()
         
+        audio_status = "con audio" if archivo_audio_blob else "sin audio"
+        
         return jsonify({
             'status': 'success',
-            'message': 'Documento guardado exitosamente',
-            'document_id': document_id
+            'message': f'Documento guardado exitosamente {audio_status}',
+            'document_id': document_id,
+            'has_audio': archivo_audio_blob is not None
         }), 201
         
     except mysql.connector.Error as e:
@@ -423,7 +494,9 @@ def get_user_documents():
         
         # Obtener documentos del usuario
         cursor.execute("""
-            SELECT id, titulo, contenido, archivo_audio, creado_en, actualizado_en 
+            SELECT id, titulo, contenido, 
+                   CASE WHEN archivo_audio IS NOT NULL THEN TRUE ELSE FALSE END as has_audio,
+                   nombre_archivo, tipo_mime, creado_en, actualizado_en 
             FROM Documentos 
             WHERE usuario_id = %s 
             ORDER BY actualizado_en DESC
@@ -466,7 +539,9 @@ def get_document(document_id):
         
         # Obtener documento específico del usuario
         cursor.execute("""
-            SELECT id, titulo, contenido, archivo_audio, creado_en, actualizado_en 
+            SELECT id, titulo, contenido, 
+                   CASE WHEN archivo_audio IS NOT NULL THEN TRUE ELSE FALSE END as has_audio,
+                   nombre_archivo, tipo_mime, creado_en, actualizado_en 
             FROM Documentos 
             WHERE id = %s AND usuario_id = %s
         """, (document_id, request.user_id))
