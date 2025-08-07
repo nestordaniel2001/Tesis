@@ -440,9 +440,12 @@ async function saveDocument() {
         const data = await response.json();
         
         if (response.ok && data.status === 'success') {
-            const message = data.has_audio ? 
-                'Documento y audio guardados exitosamente' : 
-                'Documento guardado exitosamente';
+            let message = 'Documento guardado exitosamente';
+            if (data.has_audio && data.audio_filename) {
+                message = `Documento y audio guardados exitosamente como "${data.audio_filename}"`;
+            } else if (data.has_audio) {
+                message = 'Documento y audio guardados exitosamente';
+            }
             showNotification(message, 'success');
             
             // Cerrar modal

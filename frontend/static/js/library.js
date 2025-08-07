@@ -91,7 +91,8 @@ function renderDocuments() {
     const documentsHTML = filteredDocuments.map(doc => {
         const createdDate = new Date(doc.creado_en).toLocaleDateString('es-ES');
         const preview = doc.contenido ? doc.contenido.substring(0, 100) + '...' : 'Sin contenido';
-        const hasAudio = doc.archivo_audio ? true : false;
+        const hasAudio = doc.has_audio || doc.nombre_archivo;
+        const audioFileName = doc.nombre_archivo ? doc.nombre_archivo.replace(/\.[^/.]+$/, "") : null;
         
         return `
             <div class="library-item" data-document-id="${doc.id}">
@@ -100,7 +101,7 @@ function renderDocuments() {
                 </div>
                 <div class="item-info">
                     <h3>${escapeHtml(doc.titulo)}</h3>
-                    <p>${createdDate} · Documento${hasAudio ? ' con Audio' : ''}</p>
+                    <p>${createdDate} · Documento${hasAudio ? ' con Audio' : ''}${audioFileName ? ` (${audioFileName})` : ''}</p>
                     <small class="document-preview">${escapeHtml(preview)}</small>
                 </div>
                 <div class="item-actions">
@@ -156,9 +157,9 @@ function viewDocument(documentId) {
         contentElement.textContent = doc.contenido || 'Sin contenido';
         
         // Mostrar controles de audio si el documento tiene audio
-        if (doc.archivo_audio && audioControlsElement) {
+        if ((doc.has_audio || doc.nombre_archivo) && audioControlsElement) {
             audioControlsElement.style.display = 'block';
-            setupAudioControls(doc.archivo_audio);
+            setupAudioControls(doc.nombre_archivo);
         } else if (audioControlsElement) {
             audioControlsElement.style.display = 'none';
         }
@@ -177,9 +178,18 @@ function setupAudioControls(audioPath) {
     const audioPlayer = document.getElementById('document-audio-player');
     const playAudioBtn = document.getElementById('play-document-audio-btn');
     
-    if (audioPlayer && audioPath) {
+    if (audioPlayer) {
         // Configurar la fuente del audio
-        audioPlayer.src = audioPath.replace(/^.*[\\\/]/, '/static/assets/audio/');
+        if (audioPath && audioPath.includes('/')) {
+            // Es una ruta completa
+            audioPlayer.src = audioPath;
+        } else if (audioPath) {
+            // Es solo el nombre del archivo
+            audioPlayer.src = `/static/assets/audio/${audioPath}`;
+        } else {
+            // Usar endpoint de la API
+            audioPlayer.src = `/api/documents/${currentDocumentId}/audio`;
+        }
         
         if (playAudioBtn) {
             playAudioBtn.onclick = () => {
@@ -628,7 +638,8 @@ function setupLibraryEventListeners() {
             if (searchTerm) {
                 const filteredDocuments = currentDocuments.filter(doc => 
                     doc.titulo.toLowerCase().includes(searchTerm) ||
-                    (doc.contenido && doc.contenido.toLowerCase().includes(searchTerm))
+                    (doc.contenido && doc.contenido.toLowerCase().includes(searchTerm)) ||
+                    (doc.nombre_archivo && doc.nombre_archivo.toLowerCase().includes(searchTerm))
                 );
                 
                 // Renderizar resultados de búsqueda

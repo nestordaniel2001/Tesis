@@ -19,6 +19,8 @@ from werkzeug.utils import secure_filename
 from backend.routes.tts_routes import tts_bp
 import base64
 import requests
+import shutil
+import uuid
 
 # Configuración de rutas
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -378,13 +380,18 @@ def save_document():
     if len(titulo) > 50:
         return jsonify({'error': 'El título no puede exceder 50 caracteres'}), 400
     
-    # Generar audio del contenido usando Edge TTS
+    # Generar audio del contenido usando Edge TTS con nombre personalizado
     archivo_audio_blob = None
-    nombre_archivo = None
+    nombre_archivo_audio = None
+    ruta_archivo_audio = None
     tipo_mime = 'audio/mpeg'
     
     try:
         # Obtener configuración del usuario para la voz
+        connection = get_db_connection()
+        if not connection:
+            return jsonify({'error': 'Error de conexión a la base de datos'}), 500
+            
         cursor_config = connection.cursor(dictionary=True)
         cursor_config.execute("SELECT nombre_configuracion, valor_configuracion FROM Configuraciones_Usuario WHERE usuario_id = %s", (request.user_id,))
         configs = cursor_config.fetchall()
@@ -416,16 +423,39 @@ def save_document():
         if tts_response.status_code == 200:
             tts_data = tts_response.json()
             if tts_data.get('success'):
-                # Descargar el archivo de audio generado
+                # Crear nombre de archivo personalizado basado en el título
+                titulo_seguro = secure_filename(titulo)
+                if not titulo_seguro:
+                    titulo_seguro = f"documento_{uuid.uuid4().hex[:8]}"
+                
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                nombre_archivo_audio = f"{titulo_seguro}_{timestamp}.mp3"
+                
+                # Crear directorio de destino si no existe
+                audio_dir = os.path.join(project_root, 'frontend', 'static', 'assets', 'audio')
+                os.makedirs(audio_dir, exist_ok=True)
+                
+                ruta_archivo_audio = os.path.join(audio_dir, nombre_archivo_audio)
+                
                 audio_url = tts_data['audio_url']
                 if audio_url.startswith('/static/'):
                     # Es una URL local, leer el archivo
                     audio_file_path = os.path.join(project_root, 'frontend', audio_url.lstrip('/'))
                     if os.path.exists(audio_file_path):
+                        # Copiar archivo temporal al destino final con nombre personalizado
+                        shutil.copy2(audio_file_path, ruta_archivo_audio)
+                        
+                        # Leer el archivo para guardarlo en la base de datos
                         with open(audio_file_path, 'rb') as audio_file:
                             archivo_audio_blob = audio_file.read()
-                        nombre_archivo = f"documento_audio_{datetime.now().strftime('%Y%m%d_%H%M%S')}.mp3"
-                        print(f"✅ Audio generado y leído: {len(archivo_audio_blob)} bytes")
+                        
+                        print(f"✅ Audio generado y guardado como: {nombre_archivo_audio} ({len(archivo_audio_blob)} bytes)")
+                        
+                        # Eliminar archivo temporal
+                        try:
+                            os.remove(audio_file_path)
+                        except:
+                            pass
                     else:
                         print(f"⚠️ Archivo de audio no encontrado: {audio_file_path}")
                 else:
@@ -433,8 +463,12 @@ def save_document():
                     audio_response = requests.get(audio_url)
                     if audio_response.status_code == 200:
                         archivo_audio_blob = audio_response.content
-                        nombre_archivo = f"documento_audio_{datetime.now().strftime('%Y%m%d_%H%M%S')}.mp3"
-                        print(f"✅ Audio descargado: {len(archivo_audio_blob)} bytes")
+                        
+                        # Guardar archivo con nombre personalizado
+                        with open(ruta_archivo_audio, 'wb') as f:
+                            f.write(archivo_audio_blob)
+                        
+                        print(f"✅ Audio descargado y guardado como: {nombre_archivo_audio} ({len(archivo_audio_blob)} bytes)")
             else:
                 print(f"⚠️ Error en síntesis TTS: {tts_data.get('error')}")
         else:
@@ -444,10 +478,10 @@ def save_document():
         print(f"⚠️ Error generando audio: {e}")
         # Continuar sin audio si hay error
     
-    connection = None
     cursor = None
     try:
-        connection = get_db_connection()
+        if not connection:
+            connection = get_db_connection()
         if not connection:
             return jsonify({'error': 'Error de conexión a la base de datos'}), 500
             
@@ -457,7 +491,7 @@ def save_document():
         cursor.execute("""
             INSERT INTO Documentos (usuario_id, titulo, contenido, archivo_audio, nombre_archivo, tipo_mime) 
             VALUES (%s, %s, %s, %s, %s, %s)
-        """, (request.user_id, titulo, contenido, archivo_audio_blob, nombre_archivo, tipo_mime))
+        """, (request.user_id, titulo, contenido, archivo_audio_blob, nombre_archivo_audio, tipo_mime))
         
         document_id = cursor.lastrowid
         connection.commit()
@@ -468,7 +502,8 @@ def save_document():
             'status': 'success',
             'message': f'Documento guardado exitosamente {audio_status}',
             'document_id': document_id,
-            'has_audio': archivo_audio_blob is not None
+            'has_audio': archivo_audio_blob is not None,
+            'audio_filename': nombre_archivo_audio if archivo_audio_blob else None
         }), 201
         
     except mysql.connector.Error as e:
@@ -583,11 +618,11 @@ def get_document_audio(document_id):
             
         cursor = connection.cursor()
         
-        # Obtener audio del documento
+        # Primero intentar obtener el archivo desde la ruta guardada
         cursor.execute("""
-            SELECT archivo_audio, nombre_archivo, tipo_mime 
+            SELECT nombre_archivo, tipo_mime, archivo_audio
             FROM Documentos 
-            WHERE id = %s AND usuario_id = %s AND archivo_audio IS NOT NULL
+            WHERE id = %s AND usuario_id = %s AND (nombre_archivo IS NOT NULL OR archivo_audio IS NOT NULL)
         """, (document_id, request.user_id))
         
         result = cursor.fetchone()
@@ -595,20 +630,33 @@ def get_document_audio(document_id):
         if not result:
             return jsonify({'error': 'Audio no encontrado'}), 404
         
-        archivo_audio, nombre_archivo, tipo_mime = result
+        nombre_archivo, tipo_mime, archivo_audio = result
         
-        # Crear respuesta con el audio
-        from flask import Response
-        response = Response(
-            archivo_audio,
-            mimetype=tipo_mime or 'audio/mpeg',
-            headers={
-                'Content-Disposition': f'inline; filename="{nombre_archivo or "audio.mp3"}"',
-                'Cache-Control': 'public, max-age=3600'
-            }
-        )
+        # Intentar servir desde archivo guardado primero
+        if nombre_archivo:
+            audio_file_path = os.path.join(project_root, 'frontend', 'static', 'assets', 'audio', nombre_archivo)
+            if os.path.exists(audio_file_path):
+                return send_from_directory(
+                    os.path.join(project_root, 'frontend', 'static', 'assets', 'audio'),
+                    nombre_archivo,
+                    mimetype=tipo_mime or 'audio/mpeg',
+                    as_attachment=False
+                )
         
-        return response
+        # Fallback al BLOB si no existe el archivo
+        if archivo_audio:
+            from flask import Response
+            response = Response(
+                archivo_audio,
+                mimetype=tipo_mime or 'audio/mpeg',
+                headers={
+                    'Content-Disposition': f'inline; filename="{nombre_archivo or "audio.mp3"}"',
+                    'Cache-Control': 'public, max-age=3600'
+                }
+            )
+            return response
+        
+        return jsonify({'error': 'Audio no disponible'}), 404
         
     except mysql.connector.Error as e:
         return jsonify({'error': f'Error de base de datos: {str(e)}'}), 500
