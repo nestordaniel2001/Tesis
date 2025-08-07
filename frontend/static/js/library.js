@@ -97,7 +97,7 @@ function renderDocuments() {
         return `
             <div class="library-item" data-document-id="${doc.id}">
                 <div class="item-icon visual-item">
-                    <img src="/static/assets/images/${hasAudio ? 'document_icon.png' : 'audio_icon.png'}" alt="Icono de documento">
+                    <img src="/static/assets/images/${hasAudio ? 'audio_icon.png' : 'audio_icon.png'}" alt="Icono de documento">
                 </div>
                 <div class="item-info">
                     <h3>${escapeHtml(doc.titulo)}</h3>
