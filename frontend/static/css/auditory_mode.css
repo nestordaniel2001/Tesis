@@ -105,10 +105,76 @@
     border: 1px solid #e0e0e0;
     border-radius: 8px;
     padding: 15px;
-    margin-bottom: 15px;
     font-size: 14px;
     min-height: 100px;
+    max-height: 200px;
     line-height: 1.5;
+    resize: vertical;
+    font-family: inherit;
+    width: 100%;
+    box-sizing: border-box;
+    overflow-y: auto;
+}
+
+.transcription-content:focus {
+    outline: 2px solid var(--primary-blue);
+    border-color: var(--primary-blue);
+}
+
+.transcription-controls {
+    display: flex;
+    gap: 10px;
+    justify-content: space-between;
+    margin: 15px 0;
+    flex-wrap: wrap;
+}
+
+.btn-gray {
+    padding: 8px 16px;
+    background-color: #e0e0e0;
+    border: none;
+    border-radius: 8px;
+    color: #333;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.btn-gray:hover {
+    background-color: #d0d0d0;
+}
+
+.btn-save {
+    padding: 8px 20px;
+    background-color: var(--primary-blue);
+    border: none;
+    border-radius: 8px;
+    color: var(--light-bg);
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.btn-save:hover {
+    background-color: var(--secondary-blue);
+}
+
+.save-audio {
+    margin-top: 15px;
+    padding: 10px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+    min-height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+    font-style: italic;
+}
+
+.save-audio:empty::before {
+    content: "El audio grabado aparecerá aquí";
 }
 
 /* Visualización de audio */
@@ -176,6 +242,177 @@
     background-color: var(--secondary-black);
 }
 
+/* === ESTILOS PARA EL MODAL DE GUARDAR TRANSCRIPCIÓN === */
+.modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    z-index: 1001;
+    width: 90%;
+    max-width: 500px;
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.modal-content {
+    padding: 0;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: var(--primary-blue);
+    font-size: 1.25rem;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #6b7280;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.modal-close:hover {
+    background-color: #f3f4f6;
+    color: #374151;
+}
+
+.modal-body {
+    padding: 24px;
+}
+
+.modal-body .form-group {
+    margin-bottom: 0;
+}
+
+.modal-body label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #374151;
+}
+
+.modal-body input[type="text"] {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 16px;
+    transition: border-color 0.2s ease;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.modal-body input[type="text"]:focus {
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 3px rgba(0, 70, 181, 0.1);
+}
+
+.transcription-char-counter {
+    display: block;
+    margin-top: 6px;
+    font-size: 12px;
+    color: #6b7280;
+    text-align: right;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 20px 24px;
+    border-top: 1px solid #e5e7eb;
+    background-color: #f9fafb;
+    border-radius: 0 0 12px 12px;
+}
+
+.modal-footer .btn-cancel {
+    padding: 10px 20px;
+    border: 2px solid #d1d5db;
+    background: white;
+    color: #374151;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.modal-footer .btn-cancel:hover {
+    border-color: #9ca3af;
+    background-color: #f9fafb;
+}
+
+.modal-footer .btn-save {
+    padding: 10px 20px;
+    border: none;
+    background: var(--primary-blue);
+    color: white;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.modal-footer .btn-save:hover {
+    background: var(--secondary-blue);
+}
+
+.modal-footer .btn-save:disabled {
+    background: #d1d5db;
+    cursor: not-allowed;
+}
+
+/* Animaciones del modal */
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -60%);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
 /* Estilo específico para el botón modo auditivo en la barra lateral */
 #btn-modo-auditivo.active {
     background-color: var(--primary-orange);
@@ -199,5 +436,38 @@
     
     .wave-bar {
         width: 4px;
+    }
+    
+    .save-button {
+        width: 100%;
+        margin-top: 10px;
+    }
+    
+    .transcription-controls {
+        flex-direction: column;
+    }
+    
+    .transcription-controls button {
+        width: 100%;
+    }
+    
+    .modal {
+        width: 95%;
+        margin: 20px;
+    }
+    
+    .modal-header,
+    .modal-body,
+    .modal-footer {
+        padding: 16px;
+    }
+    
+    .modal-footer {
+        flex-direction: column;
+    }
+    
+    .modal-footer .btn-cancel,
+    .modal-footer .btn-save {
+        width: 100%;
     }
 }

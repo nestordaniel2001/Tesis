@@ -75,7 +75,7 @@ function renderDocuments() {
     // Filtrar documentos según el filtro actual
     let filteredDocuments = currentDocuments;
     if (currentFilter !== 'todos') {
-        // Por ahora solo tenemos documentos, pero se puede expandir para transcripciones
+        // Filtrar por tipo si es necesario
         filteredDocuments = currentDocuments;
     }
 
@@ -94,14 +94,18 @@ function renderDocuments() {
         const hasAudio = doc.has_audio || doc.nombre_archivo;
         const audioFileName = doc.nombre_archivo ? doc.nombre_archivo.replace(/\.[^/.]+$/, "") : null;
         
+        // Determinar el tipo de documento basado en si tiene audio o no
+        const documentType = hasAudio ? 'Documento con Audio' : 'Transcripción';
+        const iconType = hasAudio ? 'audio_icon.png' : 'document_icon.png';
+        
         return `
             <div class="library-item" data-document-id="${doc.id}">
                 <div class="item-icon visual-item">
-                    <img src="/static/assets/images/${hasAudio ? 'audio_icon.png' : 'audio_icon.png'}" alt="Icono de documento">
+                    <img src="/static/assets/images/${iconType}" alt="Icono de ${documentType.toLowerCase()}">
                 </div>
                 <div class="item-info">
                     <h3>${escapeHtml(doc.titulo)}</h3>
-                    <p>${createdDate} · Documento${hasAudio ? ' con Audio' : ''}${audioFileName ? ` (${audioFileName})` : ''}</p>
+                    <p>${createdDate} · ${documentType}${audioFileName ? ` (${audioFileName})` : ''}</p>
                     <small class="document-preview">${escapeHtml(preview)}</small>
                 </div>
                 <div class="item-actions">
@@ -679,15 +683,18 @@ function renderFilteredDocuments(documents, title) {
     const documentsHTML = documents.map(doc => {
         const createdDate = new Date(doc.creado_en).toLocaleDateString('es-ES');
         const preview = doc.contenido ? doc.contenido.substring(0, 100) + '...' : 'Sin contenido';
+        const hasAudio = doc.has_audio || doc.nombre_archivo;
+        const documentType = hasAudio ? 'Documento con Audio' : 'Transcripción';
+        const iconType = hasAudio ? 'audio_icon.png' : 'document_icon.png';
         
         return `
             <div class="library-item" data-document-id="${doc.id}">
                 <div class="item-icon visual-item">
-                    <img src="/static/assets/images/audio_icon.png" alt="Icono de documento">
+                    <img src="/static/assets/images/${iconType}" alt="Icono de ${documentType.toLowerCase()}">
                 </div>
                 <div class="item-info">
                     <h3>${escapeHtml(doc.titulo)}</h3>
-                    <p>${createdDate} · Documento</p>
+                    <p>${createdDate} · ${documentType}</p>
                     <small class="document-preview">${escapeHtml(preview)}</small>
                 </div>
                 <div class="item-actions">

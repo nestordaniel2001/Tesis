@@ -600,18 +600,18 @@ function initializeVisualAssistant() {
 function initializeAudioAssistant() {
     console.log('Inicializando asistente auditivo...');
     
-    if (typeof window.audioAssistant === 'undefined') {
+    if (typeof window.auditoryAssistant === 'undefined') {
         const script = document.createElement('script');
-        script.src = '/static/js/audio_assistant.js';
+        script.src = '/static/js/auditory_assistant.js';
         script.onload = () => {
             console.log('Módulo de asistente auditivo cargado');
-            if (window.audioAssistant && typeof window.audioAssistant.initialize === 'function') {
-                window.audioAssistant.initialize();
+            if (window.auditoryAssistant && typeof window.auditoryAssistant.initialize === 'function') {
+                window.auditoryAssistant.initialize();
             }
         };
         document.head.appendChild(script);
-    } else if (window.audioAssistant && typeof window.audioAssistant.initialize === 'function') {
-        window.audioAssistant.initialize();
+    } else if (window.auditoryAssistant && typeof window.auditoryAssistant.initialize === 'function') {
+        window.auditoryAssistant.initialize();
     }
 }
 
