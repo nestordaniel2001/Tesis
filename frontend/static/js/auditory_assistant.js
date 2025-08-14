@@ -116,6 +116,7 @@ function setupSpeechRecognition() {
     auditoryState.recognition.onresult = (event) => {
         let interimTranscript = '';
         
+        auditoryState.interimTranscript = ''; // Reset interim transcript
         for (let i = event.resultIndex; i < event.results.length; ++i) {
             const transcript = event.results[i][0].transcript;
             if (event.results[i].isFinal) {
@@ -123,6 +124,7 @@ function setupSpeechRecognition() {
             } else {
                 interimTranscript += transcript;
             }
+            auditoryState.interimTranscript = interimTranscript;
         }
         
         updateTranscriptDisplay();
@@ -329,7 +331,14 @@ function updateTranscriptDisplay() {
     const transcriptBox = document.getElementById('transcriptBox');
     if (!transcriptBox) return;
 
-    const fullText = auditoryState.finalTranscript + auditoryState.interimTranscript;
+    // Combinar texto final e intermedio
+    const fullText = (auditoryState.finalTranscript || '') + (auditoryState.interimTranscript || '');
+    
+    console.log('📝 Actualizando transcripción:', {
+        final: auditoryState.finalTranscript?.length || 0,
+        interim: auditoryState.interimTranscript?.length || 0,
+        total: fullText.length
+    });
     transcriptBox.value = fullText;
     
     // Scroll automático al final
@@ -341,6 +350,7 @@ function updateTranscriptDisplay() {
  */
 function clearTranscription() {
     auditoryState.finalTranscript = '';
+    auditoryState.interimTranscript = '';
     auditoryState.interimTranscript = '';
     
     const transcriptBox = document.getElementById('transcriptBox');
@@ -355,6 +365,8 @@ function clearTranscription() {
     }
     
     showAuditoryNotification('Transcripción limpiada', 'info');
+    
+    console.log('🧹 Transcripción limpiada');
 }
 
 /**
@@ -456,6 +468,13 @@ function openSaveTranscriptionModal() {
     const transcriptBox = document.getElementById('transcriptBox');
     const text = transcriptBox?.value?.trim();
     
+    console.log('💾 Intentando abrir modal de guardado:', {
+        hasTranscriptBox: !!transcriptBox,
+        textLength: text?.length || 0,
+        finalTranscript: auditoryState.finalTranscript?.length || 0,
+        interimTranscript: auditoryState.interimTranscript?.length || 0
+    });
+    
     if (!text) {
         showAuditoryNotification('No hay transcripción para guardar', 'error');
         return;
@@ -489,6 +508,13 @@ async function saveTranscription() {
     const title = titleInput.value.trim();
     const content = transcriptBox.value.trim();
     
+    console.log('💾 Guardando transcripción:', {
+        title: title,
+        contentLength: content.length,
+        finalTranscript: auditoryState.finalTranscript?.length || 0,
+        interimTranscript: auditoryState.interimTranscript?.length || 0
+    });
+    
     // Validaciones
     if (!title) {
         showAuditoryNotification('Por favor ingresa un título', 'error');
@@ -504,6 +530,13 @@ async function saveTranscription() {
     
     if (!content) {
         showAuditoryNotification('No hay transcripción para guardar', 'error');
+        return;
+    }
+    
+    // Asegurar que tenemos el contenido más actualizado
+    const finalContent = content || auditoryState.finalTranscript || '';
+    if (!finalContent.trim()) {
+        showAuditoryNotification('No hay contenido para guardar', 'error');
         return;
     }
     
@@ -527,7 +560,7 @@ async function saveTranscription() {
             },
             body: JSON.stringify({
                 titulo: title,
-                contenido: content
+                contenido: finalContent
             })
         });
         
@@ -535,6 +568,8 @@ async function saveTranscription() {
         
         if (response.ok && data.status === 'success') {
             showAuditoryNotification('Transcripción guardada exitosamente', 'success');
+            
+            console.log('✅ Transcripción guardada:', data);
             
             // Cerrar modal
             const modal = document.getElementById("save-transcription-modal");
@@ -610,6 +645,26 @@ function showAuditoryNotification(message, type = 'info') {
     }, 3000);
 }
 
+/**
+ * Función de prueba para verificar el reconocimiento de voz
+ */
+function testSpeechRecognition() {
+    console.log('🧪 Probando reconocimiento de voz...');
+    
+    if (!auditoryState.recognition) {
+        console.error('❌ Reconocimiento de voz no disponible');
+        return;
+    }
+    
+    console.log('📊 Estado actual:', {
+        isRecording: auditoryState.isRecording,
+        isPaused: auditoryState.isPaused,
+        isTranscribing: auditoryState.isTranscribing,
+        finalTranscript: auditoryState.finalTranscript?.length || 0,
+        interimTranscript: auditoryState.interimTranscript?.length || 0
+    });
+}
+
 // ===== INICIALIZACIÓN Y LIMPIEZA =====
 
 document.addEventListener("DOMContentLoaded", function() {
@@ -629,6 +684,9 @@ document.addEventListener("DOMContentLoaded", function() {
     // Pequeño delay para asegurar que el DOM esté completamente cargado
     setTimeout(() => {
         initAuditoryAssistant();
+        
+        // Hacer la función de prueba disponible globalmente para debugging
+        window.testSpeechRecognition = testSpeechRecognition;
     }, 100);
 });
 
