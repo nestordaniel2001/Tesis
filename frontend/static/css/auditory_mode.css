@@ -243,6 +243,7 @@
 }
 
 /* === ESTILOS PARA EL MODAL DE GUARDAR TRANSCRIPCIÓN === */
+
 .modal {
     position: fixed;
     top: 50%;
@@ -330,7 +331,6 @@
     font-size: 16px;
     transition: border-color 0.2s ease;
     outline: none;
-    box-sizing: border-box;
 }
 
 .modal-body input[type="text"]:focus {
@@ -338,7 +338,7 @@
     box-shadow: 0 0 0 3px rgba(0, 70, 181, 0.1);
 }
 
-.transcription-char-counter {
+.char-counter {
     display: block;
     margin-top: 6px;
     font-size: 12px;
@@ -413,44 +413,8 @@
     }
 }
 
-/* Estilo específico para el botón modo auditivo en la barra lateral */
-#btn-modo-auditivo.active {
-    background-color: var(--primary-orange);
-    color: var(--light-bg);
-}
-
-/* Media queries para mantener la coherencia con el diseño responsive */
+/* Responsive para el modal */
 @media (max-width: 768px) {
-    .auditory-mode-card {
-        max-width: 100%;
-    }
-    
-    .recording-controls {
-        flex-direction: column;
-        gap: 10px;
-    }
-    
-    .record-btn, .pause-btn, .stop-btn {
-        width: 100%;
-    }
-    
-    .wave-bar {
-        width: 4px;
-    }
-    
-    .save-button {
-        width: 100%;
-        margin-top: 10px;
-    }
-    
-    .transcription-controls {
-        flex-direction: column;
-    }
-    
-    .transcription-controls button {
-        width: 100%;
-    }
-    
     .modal {
         width: 95%;
         margin: 20px;

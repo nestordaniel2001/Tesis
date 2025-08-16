@@ -82,32 +82,31 @@
         </main>
     </div>
 
-    <!-- Modal para guardar transcripción -->
-    <div id="save-transcription-modal" class="modal" style="display: none;">
+    <div id="save-document-modal" class="modal" style="display: none;">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>Guardar Transcripción</h3>
-                <button class="modal-close" id="close-transcription-modal">&times;</button>
+                <h3>Guardar Documento</h3>
+                <button class="modal-close" id="close-save-modal">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
-                    <label for="transcription-title">Título de la transcripción:</label>
-                    <input type="text" id="transcription-title" maxlength="50" placeholder="Ingresa el título de la transcripción">
-                    <small class="transcription-char-counter">0/50 caracteres</small>
+                    <label for="document-title">Título del documento:</label>
+                    <input type="text" id="document-title" maxlength="50" placeholder="Ingresa el título del documento">
+                    <small class="char-counter">0/50 caracteres</small>
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn-cancel" id="cancel-transcription-btn">Cancelar</button>
-                <button class="btn-save" id="confirm-transcription-btn">Guardar</button>
+                <button class="btn-cancel" id="cancel-save-btn">Cancelar</button>
+                <button class="btn-save" id="confirm-save-btn">Guardar</button>
             </div>
         </div>
     </div>
+
     <!-- Overlay del modal -->
-    <div id="transcription-modal-overlay" class="modal-overlay" style="display: none;"></div>
+    <div id="modal-overlay" class="modal-overlay" style="display: none;"></div>
 
     <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     <script src="{{ url_for('static', filename='js/audio_assistant.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/auditory_mode.js') }}"></script>
 </body>
 </html>
