@@ -4,7 +4,6 @@ Rutas para Text-to-Speech con OpenAI
 
 from flask import Blueprint, request, jsonify
 from backend.services.edge_tts import EdgeTTSService
-from backend.models.text_to_speech import TextToSpeech
 import asyncio
 
 # Crear blueprint para las rutas TTS
@@ -12,7 +11,17 @@ tts_bp = Blueprint('tts', __name__)
 
 # Inicializar servicios
 edge_tts = EdgeTTSService()
-fallback_tts = TextToSpeech()
+
+# Inicializar TTS local con manejo silencioso de errores
+fallback_tts = None
+local_tts_available = False
+
+try:
+    from backend.models.text_to_speech import TextToSpeech
+    fallback_tts = TextToSpeech()
+    local_tts_available = True
+except Exception:
+    local_tts_available = False
 
 @tts_bp.route('/api/synthesize-speech', methods=['POST'])
 def synthesize_speech():
@@ -41,9 +50,6 @@ def synthesize_speech():
         
         # Intentar con Edge TTS primero
         if edge_tts.is_available():
-            print(f"🎤 Usando Edge TTS - Voz: {voice_type}, Velocidad: {speed}x")
-            
-            # Ejecutar función async en el contexto del hilo actual
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             try:
@@ -61,33 +67,37 @@ def synthesize_speech():
                     'voice_name': result['voice_used']
                 })
             elif not result.get('fallback', False):
-                # Error sin fallback
                 return jsonify({
                     'success': False,
                     'error': result['error']
                 }), 500
         
-        # Fallback a TTS local
-        print(f"🔄 Usando TTS local como fallback - Voz: {voice_type}, Velocidad: {speed}x")
-        try:
-            audio_path = fallback_tts.synthesize(text, voice_type, speed)
-            return jsonify({
-                'success': True,
-                'audio_url': audio_path,
-                'provider': 'local',
-                'voice_used': voice_type
-            })
-        except Exception as e:
-            return jsonify({
-                'success': False,
-                'error': f'Error en TTS local: {str(e)}'
-            }), 500
-            
-    except Exception as e:
-        print(f"Error en synthesize_speech: {e}")
+        # Fallback a TTS local (solo si está disponible)
+        if local_tts_available and fallback_tts:
+            try:
+                audio_path = fallback_tts.synthesize(text, voice_type, speed)
+                return jsonify({
+                    'success': True,
+                    'audio_url': audio_path,
+                    'provider': 'local',
+                    'voice_used': voice_type
+                })
+            except Exception as e:
+                return jsonify({
+                    'success': False,
+                    'error': f'Error en TTS local: {str(e)}'
+                }), 500
+        
+        # No hay opciones disponibles
         return jsonify({
             'success': False,
-            'error': f'Error interno: {str(e)}'
+            'error': 'Servicio de síntesis de voz no disponible temporalmente'
+        }), 503
+            
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': 'Error interno del servidor'
         }), 500
 
 @tts_bp.route('/api/tts-info', methods=['GET'])
@@ -96,7 +106,7 @@ def get_tts_info():
     try:
         info = {
             'edge_tts_available': edge_tts.is_available(),
-            'local_available': True,
+            'local_available': local_tts_available,
             'voice_options': {
                 'mujer': 'Voz femenina',
                 'hombre': 'Voz masculina'

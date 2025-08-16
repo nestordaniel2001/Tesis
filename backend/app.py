@@ -966,7 +966,6 @@ def health_check():
         'timestamp': datetime.now().isoformat(),
         'database': db_status
     }), 200
-
 # ===== INICIALIZACIÓN =====
 
 if __name__ == '__main__':

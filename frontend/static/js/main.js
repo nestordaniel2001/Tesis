@@ -602,7 +602,7 @@ function initializeAudioAssistant() {
     
     if (typeof window.auditoryAssistant === 'undefined') {
         const script = document.createElement('script');
-        script.src = '/static/js/auditory_assistant.js';
+        script.src = '/static/js/audio_assistant.js';
         script.onload = () => {
             console.log('Módulo de asistente auditivo cargado');
             if (window.auditoryAssistant && typeof window.auditoryAssistant.initialize === 'function') {
